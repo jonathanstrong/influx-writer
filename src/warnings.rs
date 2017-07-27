@@ -17,6 +17,52 @@ use influx;
 
 const N_WARNINGS: usize = 150;
 
+#[macro_export]
+macro_rules! confirmed {
+    ($warnings:ident, $($args:tt)*) => (
+        {
+            $warnings.send(Warning::Confirmed( ( format!($($args)*) ) ) ).unwrap();
+        }
+    )
+}
+
+/// logs a `Warning::Awesome` message to the `WarningsManager`
+#[macro_export]
+macro_rules! awesome {
+    ($warnings:ident, $($args:tt)*) => (
+        {
+            $warnings.send(Warning::Awesome( ( format!($($args)*) ) ) ).unwrap();
+        }
+    )
+}
+
+#[macro_export]
+macro_rules! critical {
+    ($warnings:ident, $($args:tt)*) => (
+        {
+            $warnings.send(Warning::Critical( ( format!($($args)*) ) ) ).unwrap();
+        }
+    )
+}
+
+#[macro_export]
+macro_rules! notice {
+    ($warnings:ident, $($args:tt)*) => (
+        {
+            $warnings.send(Warning::Notice( ( format!($($args)*) ) ) ).unwrap();
+        }
+    )
+}
+
+#[macro_export]
+macro_rules! error {
+    ($warnings:ident, $($args:tt)*) => (
+        {
+            $warnings.send(Warning::Error( ( format!($($args)*) ) ) ).unwrap();
+        }
+    )
+}
+
 /// represents a non-fatal error somewhere in
 /// the system to report either to the program interface
 /// or in logs.
