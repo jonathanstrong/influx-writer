@@ -22,9 +22,6 @@ pub fn nanos(t: DateTime<Utc>) -> u64 {
     (t.timestamp() as u64) * 1_000_000_000_u64 + (t.timestamp_subsec_nanos() as u64)
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-    }
-}
+// #[cfg(test)]
+// mod tests {
+// }
