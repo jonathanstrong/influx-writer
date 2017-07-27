@@ -1,0 +1,13 @@
+[package]
+name = "logging"
+version = "0.1.0"
+authors = ["Jonathan Strong <jstrong@legis.io>"]
+
+[dependencies]
+zmq = "0.8"
+influent = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+hyper = "0.10"
+termion = "1.4.0"
+windows = { path = "../windows" }
+pub-sub = "2.0"
