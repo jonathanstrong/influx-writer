@@ -168,7 +168,7 @@ impl<W> Display for LatencyUpdate<W>
     where W: MeasurementWindow
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, " Latency\n gdax ws: ");
+        write!(f, " gdax ws: ");
         tfmt_write(self.gdax_ws, f);
         write!(f, "\n krkn pub: ");
         tfmt_write(self.krkn_pub, f);
