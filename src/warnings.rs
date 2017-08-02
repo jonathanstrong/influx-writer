@@ -206,7 +206,7 @@ impl Record {
     pub fn to_measurement(&self) -> Measurement {
         let cat = self.msg.category_str();
         let body = self.msg.msg_str();
-        let mut m = Measurement::new("warnings");
+        let mut m = Measurement::new("log");
         m.add_tag("category", cat);
         m.add_field("msg", InfluentValue::String(body));
         m.set_timestamp(nanos(self.time) as i64);
@@ -266,6 +266,11 @@ impl MeasurementRecord {
         Ok(())
     }
 
+    pub fn serialize_values(&mut self, record: &slog::Record, values: &OwnedKVList) {
+        let mut builder = TagBuilder { mrec: self };
+        values.serialize(record, &mut builder);
+    }
+
     pub fn meas<'a>(&'a self) -> Measurement<'a> {
         let fields: BTreeMap<&'a str, InfluentValue<'a>> =
             self.fields.iter()
@@ -280,12 +285,11 @@ impl MeasurementRecord {
                 }).collect();
 
         Measurement {
-            key: "warnings",
+            key: "log",
             timestamp: Some(nanos(Utc::now()) as i64),
             fields,
             tags,
         }
-
     }
 }
 
@@ -293,7 +297,6 @@ impl slog::Serializer for MeasurementRecord {
     fn emit_usize(&mut self, key: Key, val: usize) -> SlogResult { self.add_field(key, Value::Integer(val as i64)) }
     fn emit_isize(&mut self, key: Key, val: isize) -> SlogResult { self.add_field(key, Value::Integer(val as i64)) }
     fn emit_bool(&mut self, key: Key, val: bool)   -> SlogResult { self.add_field(key, Value::Boolean(val)); Ok(()) }
-    //fn emit_char(&mut self, key: Key, val: char)   -> SlogResult { seld(key, Value::String(val.into())); Ok(()) }
     fn emit_u8(&mut self, key: Key, val: u8)       -> SlogResult { self.add_field(key, Value::Integer(val as i64)) }
     fn emit_i8(&mut self, key: Key, val: i8)       -> SlogResult { self.add_field(key, Value::Integer(val as i64)) }
     fn emit_u16(&mut self, key: Key, val: u16)     -> SlogResult { self.add_field(key, Value::Integer(val as i64)) } 
@@ -304,10 +307,24 @@ impl slog::Serializer for MeasurementRecord {
     fn emit_u64(&mut self, key: Key, val: u64)     -> SlogResult { self.add_field(key, Value::Integer(val as i64)) }
     fn emit_i64(&mut self, key: Key, val: i64)     -> SlogResult { self.add_field(key, Value::Integer(val)) }
     fn emit_f64(&mut self, key: Key, val: f64)     -> SlogResult { self.add_field(key, Value::Float(val)) }
-    fn emit_str(&mut self, key: Key, val: &str)    -> SlogResult { self.add_tag(key, val.to_string()) }
-    fn emit_unit(&mut self, key: Key) -> SlogResult { self.add_field(key, Value::Boolean(true)) }
-    fn emit_none(&mut self, key: Key) -> SlogResult { self.add_field(key, Value::String("none".into())) }
-    fn emit_arguments(&mut self, key: Key, val: &fmt::Arguments) -> SlogResult { self.add_tag(key, val.to_string()) } 
+    fn emit_str(&mut self, key: Key, val: &str)    -> SlogResult { self.add_field(key, Value::String(val.to_string())) }
+    fn emit_unit(&mut self, key: Key)              -> SlogResult { self.add_field(key, Value::Boolean(true)) }
+    fn emit_none(&mut self, key: Key)              -> SlogResult { Ok(()) } //self.add_field(key, Value::String("none".into())) }
+    fn emit_arguments(&mut self, key: Key, val: &fmt::Arguments) -> SlogResult { self.add_field(key, Value::String(val.to_string())) } 
+}
+
+pub struct TagBuilder<'a> {
+    mrec: &'a mut MeasurementRecord
+}
+
+impl<'a> slog::Serializer for TagBuilder<'a> {
+    fn emit_str(&mut self, key: Key, val: &str)    -> SlogResult { 
+        self.mrec.add_tag(key, val.to_string())
+    }
+
+    fn emit_arguments(&mut self, key: Key, val: &fmt::Arguments) -> SlogResult { 
+        self.mrec.add_tag(key, val.to_string())
+    }
 }
 
 pub struct WarningsDrain<D: Drain> {
@@ -332,6 +349,7 @@ impl<D: Drain> Drain for WarningsDrain<D> {
         //let mut meas = Measurement::new("warnings");
         //println!("{:?}", values);
         let mut ser = MeasurementRecord::new();
+        ser.serialize_values(record, values);
         //values.serialize(record, &mut ser);
         record.kv().serialize(record, &mut ser);
         //println!("{:?}", ser);
@@ -412,6 +430,7 @@ impl Drop for WarningsManager {
 }
 
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use test::{black_box, Bencher};
@@ -421,7 +440,7 @@ mod tests {
         let wm = WarningsManager::new();
         let im = influx::writer(wm.tx.clone());
         let drain = WarningsDrain { tx: Arc::new(Mutex::new(wm.tx.clone())), drain: slog::Discard };
-        let logger = slog::Logger::root(drain, o!("build" => "0.1.3"));
+        let logger = slog::Logger::root(drain, o!());
         //for _ in 0..60 {
         //    debug!(logger, "test 123"; "exchange" => "plnx");
         //}
