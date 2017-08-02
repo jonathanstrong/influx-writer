@@ -1,6 +1,11 @@
 //! Tools to record and display what's happening in your program
 //!
 
+#![feature(test)]
+
+#[macro_use] extern crate slog;
+
+extern crate test;
 extern crate zmq;
 extern crate influent;
 extern crate chrono;

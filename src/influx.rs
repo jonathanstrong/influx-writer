@@ -131,7 +131,6 @@ pub fn serialize(measurement: &Measurement, line: &mut String) {
 }
 
 
-
 pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
 
     let ctx = zmq::Context::new();
@@ -157,7 +156,7 @@ pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
                             buf.push_str(&msg);
                             1
                         }
-                        n @ 1...20 => {
+                        n @ 1...40 => {
                             buf.push_str("\n");
                             buf.push_str(&msg);
                             n + 1
