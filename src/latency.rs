@@ -251,7 +251,7 @@ impl LatencyManager<WTen> {
                 if let Ok(msg) = rx.recv() {
                     match msg {
                         ExperiencedLatency::Terminate => {
-                            println!("latency manager terminating");
+                            //println!("latency manager terminating");
                             break;
                         }
                         ExperiencedLatency::GdaxWebsocket(d) => gdax_ws.update(Instant::now(), d),

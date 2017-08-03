@@ -381,7 +381,7 @@ impl WarningsManager {
             if let Ok(msg) = rx.recv() {
                 match msg {
                     Warning::Terminate => {
-                        println!("warnings manager terminating");
+                        //println!("warnings manager terminating");
                         break;
                     }
 
