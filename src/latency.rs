@@ -239,9 +239,9 @@ impl LatencyManager<WTen> {
             let mut plnx_priv = DurationWindow::new(w.duration());
             let mut plnx_order = DurationWindow::new(w.duration());
 
-            /// yes I am intentionally breaking from the hard-typed duration
-            /// window ... that was a stupid idea
-            ///
+            // yes I am intentionally breaking from the hard-typed duration
+            // window ... that was a stupid idea
+            //
             let mut krkn_trade_30 = DurationWindow::new(Duration::from_secs(30));
             let mut krkn_trade_300 = DurationWindow::new(Duration::from_secs(300));
             //let mut gdax_ws_nolock = DurationWindow::new(w.duration());
