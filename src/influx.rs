@@ -134,11 +134,19 @@ pub fn serialize(measurement: &Measurement, line: &mut String) {
 pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
     line.push_str(&escape(measurement.key));
 
-    for (tag, value) in measurement.tags.iter() {
+    let add_tag = |line: &mut String, key: &str, value: &str| {
         line.push_str(",");
-        line.push_str(&escape(tag));
+        line.push_str(&escape(key));
         line.push_str("=");
         line.push_str(&escape(value));
+    };
+
+    for (key, value) in measurement.tags.iter() {
+        add_tag(line, key, value);
+    }
+
+    for (key, value) in measurement.string_tags.iter() {
+        add_tag(line, key, value);
     }
 
     let mut was_spaced = false;
@@ -236,7 +244,8 @@ pub struct OwnedMeasurement {
     pub key: &'static str,
     pub timestamp: Option<i64>,
     pub fields: HashMap<&'static str, OwnedValue>,
-    pub tags: HashMap<&'static str, &'static str>
+    pub tags: HashMap<&'static str, &'static str>,
+    pub string_tags: HashMap<&'static str, String>
 }
 
 impl OwnedMeasurement {
@@ -245,12 +254,18 @@ impl OwnedMeasurement {
             key,
             timestamp: None,
             fields: HashMap::new(),
-            tags: HashMap::new()
+            tags: HashMap::new(),
+            string_tags: HashMap::new()
         }
     }
 
     pub fn add_tag(mut self, key: &'static str, value: &'static str) -> Self {
         self.tags.insert(key, value);
+        self
+    }
+
+    pub fn add_string_tag(mut self, key: &'static str, value: String) -> Self {
+        self.string_tags.insert(key, value);
         self
     }
 
