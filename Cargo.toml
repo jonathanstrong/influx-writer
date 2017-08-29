@@ -13,3 +13,4 @@ pub-sub = "2.0"
 slog = "2.0.6"
 
 windows = { path = "../windows" }
+money = { path = "../money" }

@@ -4,6 +4,7 @@
 #![feature(test)]
 
 #[macro_use] extern crate slog;
+#[macro_use] extern crate money;
 
 extern crate test;
 extern crate zmq;

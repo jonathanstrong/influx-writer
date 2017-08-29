@@ -11,6 +11,8 @@ use zmq;
 use influent::measurement::{Measurement, Value};
 
 use windows::{DurationWindow, Incremental};
+use money::{Ticker, Side};
+
 use influx;
 
 
@@ -109,7 +111,7 @@ pub enum ExperiencedLatency {
 
     KrknHttpPrivate(Duration),
 
-    KrknTrade(Duration),
+    KrknTrade(Duration, Option<Ticker>, Option<Side>),
 
     EventLoop(Duration),
 
@@ -350,13 +352,21 @@ impl LatencyManager<WTen> {
                             plnx_order.update(loop_time, d)
                         }
 
-                        ExperiencedLatency::KrknTrade(d) => {
+                        ExperiencedLatency::KrknTrade(d, ticker, side) => {
                             last.krkn = loop_time;
                             let n = DurationWindow::nanos(d);
                             krkn_trade_30.update(loop_time, d);
                             krkn_trade_300.update(loop_time, d);
+                            let ticker_s = ticker.map(|t| t.to_string()).unwrap_or("".into());
+                            let side_s = side.map(|s| s.to_string()).unwrap_or("".into());
                             let mut m = Measurement::new("krkn_trade_api");
                             m.add_field("nanos", Value::Integer(n as i64));
+                            if ticker.is_some() {
+                                m.add_tag("ticker", &ticker_s);
+                            }
+                            if side.is_some() {
+                                m.add_tag("side", &side_s);
+                            }
                             m.set_timestamp(now());
                             influx::serialize(&m, &mut buf);
                             socket.send_str(&buf, 0);
