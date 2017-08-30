@@ -203,10 +203,10 @@ impl Record {
         Record { time, msg }
     }
 
-    pub fn to_measurement(&self) -> Measurement {
+    pub fn to_measurement(&self, name: &'static str) -> Measurement {
         let cat = self.msg.category_str();
         let body = self.msg.msg_str();
-        let mut m = Measurement::new("log");
+        let mut m = Measurement::new(name);
         m.add_tag("category", cat);
         m.add_field("msg", InfluentValue::String(body));
         m.set_timestamp(nanos(self.time) as i64);
@@ -370,7 +370,10 @@ pub struct WarningsManager {
 }
 
 impl WarningsManager {
-    pub fn new() -> Self {
+    /// `measurement_name` is the name of the influxdb measurement
+    /// we will save log entries to.
+    ///
+    pub fn new(measurement_name: &'static str) -> Self {
         let warnings = Arc::new(RwLock::new(VecDeque::new()));
         let warnings_copy = warnings.clone();
         let (tx, rx) = channel();
@@ -395,10 +398,11 @@ impl WarningsManager {
                         // and don't push to warnings
                         // bc it's debug
                     }
+
                     other => {
                         let rec = Record::new(other);
                         {
-                            let m = rec.to_measurement();
+                            let m = rec.to_measurement(measurement_name);
                             influx::serialize(&m, &mut buf);
                             socket.send_str(&buf, 0);
                             buf.clear();
