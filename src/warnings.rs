@@ -13,7 +13,7 @@ use termion::color::{self, Fg, Bg};
 use influent::measurement::{Measurement, Value as InfluentValue};
 use slog::{self, OwnedKVList, Drain, Key, KV};
 
-use super::nanos;
+use super::{nanos, file_logger};
 use influx;
 
 
@@ -380,41 +380,49 @@ impl WarningsManager {
         let mut buf = String::with_capacity(4096);
         let ctx = zmq::Context::new();
         let socket = influx::push(&ctx).unwrap();
-        let thread = thread::spawn(move || { loop {
-            if let Ok(msg) = rx.recv() {
-                match msg {
-                    Warning::Terminate => {
-                        //println!("warnings manager terminating");
-                        break;
-                    }
+        let thread = thread::spawn(move || { 
+            let logger = file_logger("var/log/warnings-manager.log");
+            info!(logger, "entering loop");
+            loop {
+                if let Ok(msg) = rx.recv() {
+                    match msg {
+                        Warning::Terminate => {
+                            crit!(logger, "terminating");
+                            break;
+                        }
 
-                    Warning::Debug { msg, kv } => {
-                        let mut meas = kv.meas();
-                        meas.add_field("msg", InfluentValue::String(msg.as_ref()));
-                        meas.add_tag("category", "debug");
-                        influx::serialize(&meas, &mut buf);
-                        socket.send_str(&buf, 0);
-                        buf.clear();
-                        // and don't push to warnings
-                        // bc it's debug
-                    }
-
-                    other => {
-                        let rec = Record::new(other);
-                        {
-                            let m = rec.to_measurement(measurement_name);
-                            influx::serialize(&m, &mut buf);
+                        Warning::Debug { msg, kv } => {
+                            debug!(logger, "new Warning::Debug arrived";
+                                   "msg" => &msg);
+                            let mut meas = kv.meas();
+                            meas.add_field("msg", InfluentValue::String(msg.as_ref()));
+                            meas.add_tag("category", "debug");
+                            influx::serialize(&meas, &mut buf);
                             socket.send_str(&buf, 0);
                             buf.clear();
+                            // and don't push to warnings
+                            // bc it's debug
                         }
-                        if let Ok(mut lock) = warnings.write() {
-                            lock.push_front(rec);
-                            lock.truncate(N_WARNINGS);
+
+                        other => {
+                            debug!(logger, "new {} arrived", other.category_str();
+                                   "msg" => other.category_str());
+                            let rec = Record::new(other);
+                            {
+                                let m = rec.to_measurement(measurement_name);
+                                influx::serialize(&m, &mut buf);
+                                socket.send_str(&buf, 0);
+                                buf.clear();
+                            }
+                            if let Ok(mut lock) = warnings.write() {
+                                lock.push_front(rec);
+                                lock.truncate(N_WARNINGS);
+                            }
                         }
                     }
                 }
-            }
-        } });
+            } 
+        });
 
         WarningsManager {
             warnings: warnings_copy,

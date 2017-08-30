@@ -11,6 +11,7 @@ hyper = "0.10"
 termion = "1.4.0"
 pub-sub = "2.0"
 slog = "2.0.6"
+sloggers = "0.2"
 
 windows = { path = "../windows" }
 money = { path = "../money" }

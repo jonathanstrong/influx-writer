@@ -13,7 +13,9 @@ use influent::measurement::{Measurement, Value};
 use windows::{DurationWindow, Incremental};
 use money::{Ticker, Side};
 
+use super::file_logger;
 use influx;
+
 
 
 
@@ -287,11 +289,13 @@ impl LatencyManager<WTen> {
         let w = w.clone();
 
         let thread = Some(thread::spawn(move || { 
+            let logger = file_logger("var/log/latency-manager.log");
+            info!(logger, "initializing zmq");
 
             let ctx = zmq::Context::new();
             let socket = influx::push(&ctx).unwrap();
             let mut buf = String::with_capacity(4096);
-            let w = w.clone();
+            info!(logger, "initializing DurationWindows");
             let mut gdax_ws = DurationWindow::new(w.duration());
             let mut gdax_priv = DurationWindow::new(w.duration());
             let mut krkn_pub = DurationWindow::new(w.duration());
@@ -313,13 +317,16 @@ impl LatencyManager<WTen> {
 
             thread::sleep_ms(1);
 
+            info!(logger, "entering loop");
             loop {
                 let loop_time = Instant::now();
 
                 if let Ok(msg) = rx.recv() {
+                    debug!(logger, "new msg: {:?}", msg);
+
                     match msg {
                         ExperiencedLatency::Terminate => {
-                            //println!("latency manager terminating");
+                            crit!(logger, "terminating");
                             break;
                         }
 
@@ -353,6 +360,8 @@ impl LatencyManager<WTen> {
                         }
 
                         ExperiencedLatency::KrknTrade(d, cmd, ticker, side) => {
+                            debug!(logger, "new KrknTrade";
+                                   "cmd" => cmd);
                             last.krkn = loop_time;
                             let n = DurationWindow::nanos(d);
                             krkn_trade_30.update(loop_time, d);
@@ -374,11 +383,14 @@ impl LatencyManager<WTen> {
                             buf.clear();
                         }
                         //ExperiencedLatency::EventLoop(d) => event_loop.update(Instant::now(), d),
-                        other => {}
+                        other => {
+                            warn!(logger, "unexpected msg: {:?}", other);
+                        }
                     }
                 }
 
                 if loop_time - last.broadcast > Duration::from_millis(100) {
+                    debug!(logger, "initalizing broadcast");
                     // note - because we mutated the Window instances
                     // above, we need a fresh Instant to avoid less than other
                     // panic
@@ -408,8 +420,10 @@ impl LatencyManager<WTen> {
                     };
                     channel.send(update);
                     last.broadcast = loop_time;
+                    debug!(logger, "sent broadcast");
                 }
             }
+            crit!(logger, "goodbye");
         }));
 
         LatencyManager {
