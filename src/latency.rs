@@ -111,7 +111,7 @@ pub enum ExperiencedLatency {
 
     KrknHttpPrivate(Duration),
 
-    KrknTrade(Duration, Option<Ticker>, Option<Side>),
+    KrknTrade(Duration, &'static str, Option<Ticker>, Option<Side>),
 
     EventLoop(Duration),
 
@@ -352,7 +352,7 @@ impl LatencyManager<WTen> {
                             plnx_order.update(loop_time, d)
                         }
 
-                        ExperiencedLatency::KrknTrade(d, ticker, side) => {
+                        ExperiencedLatency::KrknTrade(d, cmd, ticker, side) => {
                             last.krkn = loop_time;
                             let n = DurationWindow::nanos(d);
                             krkn_trade_30.update(loop_time, d);
@@ -361,6 +361,7 @@ impl LatencyManager<WTen> {
                             let side_s = side.map(|s| s.to_string()).unwrap_or("".into());
                             let mut m = Measurement::new("krkn_trade_api");
                             m.add_field("nanos", Value::Integer(n as i64));
+                            m.add_tag("cmd", cmd);
                             if ticker.is_some() {
                                 m.add_tag("ticker", &ticker_s);
                             }
