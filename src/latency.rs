@@ -2,7 +2,7 @@ use std::thread::{self, JoinHandle};
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::mpsc::{self, Sender, Receiver, channel};
 use std::collections::VecDeque;
-use std::fmt::{self, Display, Error as FmtError, Formatter, Write};
+use std::fmt::{self, Display, Write};
 use std::time::{Instant, Duration};
 
 use chrono::{self, DateTime, Utc, TimeZone};
@@ -11,10 +11,10 @@ use zmq;
 use influent::measurement::{Measurement, Value};
 
 use windows::{DurationWindow, Incremental};
-use money::{Ticker, Side};
+use money::{Ticker, Side, ByExchange, Exchange};
 
 use super::file_logger;
-use influx;
+use influx::{self, OwnedMeasurement, OwnedValue};
 
 
 
@@ -71,7 +71,7 @@ pub fn tfmt_dt(dt: DateTime<Utc>) -> String {
 }
 
 
-pub fn tfmt_write(ns: Nanos, f: &mut Formatter) {
+pub fn tfmt_write(ns: Nanos, f: &mut fmt::Formatter) {
     match ns {
         t if t <= MICROSECOND => {
             write!(f, "{}ns", t);
@@ -88,6 +88,14 @@ pub fn tfmt_write(ns: Nanos, f: &mut Formatter) {
             write!(f, "{}.{}sec", t / SECOND, t / MILLISECOND);
         }
     }
+}
+
+#[derive(Debug)]
+pub enum Latency {
+    Ws(Exchange, Ticker, Duration),
+    Http(Exchange, Duration),
+    Trade(Exchange, Ticker, Duration),
+    Terminate
 }
 
 #[derive(Debug)]
@@ -154,6 +162,42 @@ impl MeasurementWindow for WTen {
     fn duration(&self) -> Duration { Duration::from_secs(10) }
 }
 
+
+#[derive(Debug, Clone)]
+pub struct Update {
+    pub gdax_ws: Nanos,
+    pub gdax_trade: Nanos,
+    pub gdax_last: DateTime<Utc>
+}
+
+impl Default for Update {
+    fn default() -> Self {
+        Update {
+            gdax_ws: 0,
+            gdax_trade: 0,
+            gdax_last: Utc::now(),
+        }
+    }
+}
+
+// impl Update {
+//     pub fn new(window: Duration) -> Self {
+//         Update {
+//             window,
+//             ws: OrderMap::new(),
+//             http: 0,
+//             trade: OrderMap::new(),
+//         }
+//     }
+// }
+
+// #[derive(Clone)]
+// pub struct Updates {
+//     pub gdax_5: Update,
+//     pub gdax_30: Update,
+//     pub last: ByExchange<DateTime<Utc>>
+// }
+
 #[derive(Debug, Clone)]
 pub struct LatencyUpdate<W> 
     where W: MeasurementWindow
@@ -206,7 +250,7 @@ impl<W> Default for LatencyUpdate<W>
 impl<W> Display for LatencyUpdate<W> 
     where W: MeasurementWindow
 {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, " gdax ws: ");
         tfmt_write(self.gdax_ws, f);
         write!(f, "\n krkn pub: ");
@@ -248,6 +292,12 @@ impl<W: MeasurementWindow> LatencyUpdate<W> {
 
 }
 
+pub struct Manager {
+    pub tx: Sender<Latency>,
+    pub channel: PubSub<Update>,
+        thread: Option<JoinHandle<()>>,
+}
+
 pub struct LatencyManager<W> 
     where W: MeasurementWindow + Clone + Send + Sync
 {
@@ -267,6 +317,7 @@ struct Last {
     broadcast: Instant,
     plnx: Instant,
     krkn: Instant,
+    gdax: Instant,
 }
 
 impl Default for Last {
@@ -275,9 +326,97 @@ impl Default for Last {
             broadcast: Instant::now(),
             plnx: Instant::now(),
             krkn: Instant::now(),
+            gdax: Instant::now(),
         }
     }
 }
+
+impl Manager {
+    pub fn new(window: Duration,
+           log_path: &'static str, 
+           measurements: Sender<OwnedMeasurement>) -> Self {
+
+        let (tx, rx) = channel();
+        let tx_copy = tx.clone();
+        let channel = PubSub::new();
+        let channel_copy = channel.clone();
+        let logger = file_logger(log_path);
+        
+        info!(logger, "initializing");
+ 
+        let mut gdax_ws = DurationWindow::new(window);
+        let mut gdax_trade = DurationWindow::new(window);
+
+        let mut last = Last::default();
+
+        info!(logger, "entering loop");
+        let mut terminate = false;
+
+        let thread = Some(thread::spawn(move || { 
+            loop {
+
+                let loop_time = Instant::now();
+
+                rx.try_recv().map(|msg| {
+                    debug!(logger, "rcvd {:?}", msg);
+
+                    match msg {
+                        Latency::Ws(exch, ticker, dur) => {
+                            // shortcut
+                            gdax_ws.update(loop_time, dur);
+                            last.gdax = loop_time;
+                        }
+
+                        Latency::Trade(exch, ticker, dur) => {
+                            //shorcut
+                            gdax_trade.update(loop_time, dur);
+                            last.gdax = loop_time;
+                            let nanos = DurationWindow::nanos(dur);
+                            measurements.send(
+                                OwnedMeasurement::new("gdax_trade_api")
+                                    .add_string_tag("ticker", ticker.to_string())
+                                    .add_field("nanos", OwnedValue::Integer(nanos as i64))
+                                    .set_timestamp(influx::now()));
+                        }
+
+                        Latency::Terminate => {
+                            crit!(logger, "rcvd Terminate order");
+                            terminate = true;
+                        }
+
+                        _ => {}
+                    }
+                });
+
+                if loop_time - last.broadcast > Duration::from_millis(100) {
+                    debug!(logger, "initalizing broadcast");
+
+                    let update = Update {
+                        gdax_ws: gdax_ws.refresh(&loop_time).mean_nanos(),
+                        gdax_trade: gdax_trade.refresh(&loop_time).mean_nanos(),
+                        gdax_last: dt_from_dur(loop_time - last.gdax)
+                    };
+                    channel.send(update);
+                    last.broadcast = loop_time;
+                    debug!(logger, "sent broadcast");
+                } else {
+                    thread::sleep(Duration::from_millis(1) / 10);
+                }
+
+                if terminate { break }
+            }
+            crit!(logger, "goodbye");
+        }));
+
+        Manager {
+            tx,
+            channel: channel_copy,
+            thread,
+        }
+    }
+}
+
+
 
 //impl<W: MeasurementWindow + Clone + Send + Sync> LatencyManager<W> {
 impl LatencyManager<WTen> {

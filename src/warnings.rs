@@ -271,7 +271,7 @@ impl MeasurementRecord {
         values.serialize(record, &mut builder);
     }
 
-    pub fn meas<'a>(&'a self) -> Measurement<'a> {
+    pub fn to_measurement<'a>(&'a self, name: &'a str) -> Measurement<'a> {
         let fields: BTreeMap<&'a str, InfluentValue<'a>> =
             self.fields.iter()
                 .map(|&(k, ref v)| {
@@ -285,7 +285,7 @@ impl MeasurementRecord {
                 }).collect();
 
         Measurement {
-            key: "log",
+            key: name,
             timestamp: Some(nanos(Utc::now()) as i64),
             fields,
             tags,
@@ -381,7 +381,8 @@ impl WarningsManager {
         let ctx = zmq::Context::new();
         let socket = influx::push(&ctx).unwrap();
         let thread = thread::spawn(move || { 
-            let logger = file_logger("var/log/warnings-manager.log");
+            let path = format!("var/log/warnings-manager-{}.log", measurement_name);
+            let logger = file_logger(&path);
             info!(logger, "entering loop");
             loop {
                 if let Ok(msg) = rx.recv() {
@@ -394,7 +395,7 @@ impl WarningsManager {
                         Warning::Debug { msg, kv } => {
                             debug!(logger, "new Warning::Debug arrived";
                                    "msg" => &msg);
-                            let mut meas = kv.meas();
+                            let mut meas = kv.to_measurement(measurement_name);
                             meas.add_field("msg", InfluentValue::String(msg.as_ref()));
                             meas.add_tag("category", "debug");
                             influx::serialize(&meas, &mut buf);

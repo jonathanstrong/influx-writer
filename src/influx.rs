@@ -292,10 +292,10 @@ pub fn dur_nanos(d: ::std::time::Duration) -> i64 {
 /// incoming `Measurement`s that way *in addition* to the old socket/`String`
 /// method
 ///
-pub fn writer_str_or_meas(warnings: Sender<Warning>) -> (thread::JoinHandle<()>, Sender<OwnedMeasurement>) {
+pub fn writer_str_or_meas(log_path: &str, warnings: Sender<Warning>) -> (thread::JoinHandle<()>, Sender<OwnedMeasurement>) {
     let (tx, rx) = channel();
+    let logger = file_logger(log_path);
     let thread = thread::spawn(move || {
-        let logger = file_logger("var/log/influx.log");
         info!(logger, "initializing zmq");
         let _ = fs::create_dir("/tmp/mm");
         let ctx = zmq::Context::new();
