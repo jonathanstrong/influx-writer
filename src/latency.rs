@@ -400,6 +400,7 @@ impl Manager {
                     last.broadcast = loop_time;
                     debug!(logger, "sent broadcast");
                 } else {
+                    #[cfg(feature = "no-thrash")]
                     thread::sleep(Duration::from_millis(1) / 10);
                 }
 

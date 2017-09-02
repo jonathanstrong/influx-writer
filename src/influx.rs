@@ -401,6 +401,7 @@ pub fn writer_str_or_meas(log_path: &str, warnings: Sender<Warning>) -> (thread:
                 });
 
             if !rcvd_msg {
+                #[cfg(feature = "no-thrash")]
                 thread::sleep(Duration::from_millis(1) / 10);
             }
         }
