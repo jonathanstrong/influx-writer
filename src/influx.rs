@@ -320,11 +320,13 @@ pub fn writer_str_or_meas(log_path: &str, warnings: Sender<Warning>) -> (thread:
                     buf.push_str(s);
                     1
                 }
-                n @ 1...40 => {
+
+                n @ 1...80 => {
                     buf.push_str("\n");
                     buf.push_str(s);
                     n + 1
                 }
+
                 _ => {
                     buf.push_str("\n");
                     buf.push_str(s);
