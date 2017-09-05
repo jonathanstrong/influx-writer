@@ -16,6 +16,7 @@ use hyper::client::Client;
 use influent::measurement::{Measurement, Value};
 use zmq;
 use chrono::{DateTime, Utc, TimeZone};
+use sloggers::types::Severity;
 
 use super::{nanos, file_logger};
 use warnings::Warning;
@@ -294,7 +295,7 @@ pub fn dur_nanos(d: ::std::time::Duration) -> i64 {
 ///
 pub fn writer_str_or_meas(log_path: &str, warnings: Sender<Warning>) -> (thread::JoinHandle<()>, Sender<OwnedMeasurement>) {
     let (tx, rx) = channel();
-    let logger = file_logger(log_path);
+    let logger = file_logger(log_path, Severity::Info);
     let thread = thread::spawn(move || {
         info!(logger, "initializing zmq");
         let _ = fs::create_dir("/tmp/mm");
@@ -350,19 +351,6 @@ pub fn writer_str_or_meas(log_path: &str, warnings: Sender<Warning>) -> (thread:
                             error!(logger, "influx server error";
                                    "status" => resp.status.to_string(),
                                    "body" => server_resp);
-                            // OpenOptions::new()
-                            //     .create(true)
-                            //     .append(true)
-                            //     .open("/home/jstrong/src/market-maker/influx-errors.txt")
-                            //     .map_err(|e| {
-                            //         warnings.send(Warning::Error(format!("failed to save influx error: {}", e)));
-                            //     }).map(|mut file| {
-                            //         write!(file, "{}", server_resp);
-                            //     });
-                            // server_resp.truncate(120);
-                            // warnings.send(
-                            //     Warning::Error(
-                            //         format!("Influx server: {}", server_resp)));
                         }
 
                         Err(why) => {

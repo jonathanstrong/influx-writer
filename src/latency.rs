@@ -9,6 +9,7 @@ use chrono::{self, DateTime, Utc, TimeZone};
 use pub_sub::PubSub;
 use zmq;
 use influent::measurement::{Measurement, Value};
+use sloggers::types::Severity;
 
 use windows::{DurationWindow, Incremental};
 use money::{Ticker, Side, ByExchange, Exchange};
@@ -340,7 +341,7 @@ impl Manager {
         let tx_copy = tx.clone();
         let channel = PubSub::new();
         let channel_copy = channel.clone();
-        let logger = file_logger(log_path);
+        let logger = file_logger(log_path, Severity::Info);
         
         info!(logger, "initializing");
  
@@ -429,7 +430,7 @@ impl LatencyManager<WTen> {
         let w = w.clone();
 
         let thread = Some(thread::spawn(move || { 
-            let logger = file_logger("var/log/latency-manager.log");
+            let logger = file_logger("var/log/latency-manager.log", Severity::Info);
             info!(logger, "initializing zmq");
 
             let ctx = zmq::Context::new();

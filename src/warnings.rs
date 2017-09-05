@@ -12,6 +12,7 @@ use chrono::{DateTime, Utc, TimeZone};
 use termion::color::{self, Fg, Bg};
 use influent::measurement::{Measurement, Value as InfluentValue};
 use slog::{self, OwnedKVList, Drain, Key, KV};
+use sloggers::types::Severity;
 
 use super::{nanos, file_logger};
 use influx;
@@ -382,7 +383,7 @@ impl WarningsManager {
         let socket = influx::push(&ctx).unwrap();
         let thread = thread::spawn(move || { 
             let path = format!("var/log/warnings-manager-{}.log", measurement_name);
-            let logger = file_logger(&path);
+            let logger = file_logger(&path, Severity::Info);
             info!(logger, "entering loop");
             loop {
                 if let Ok(msg) = rx.recv() {
