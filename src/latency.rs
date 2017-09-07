@@ -418,6 +418,15 @@ impl Manager {
     }
 }
 
+impl Drop for Manager {
+    fn drop(&mut self) {
+        self.tx.send(Latency::Terminate);
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
 
 
 //impl<W: MeasurementWindow + Clone + Send + Sync> LatencyManager<W> {
