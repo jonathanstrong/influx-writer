@@ -13,7 +13,7 @@ use zmq;
 use chrono::{DateTime, Utc, TimeZone};
 use termion::color::{self, Fg, Bg};
 use influent::measurement::{Measurement, Value as InfluentValue};
-use slog::{self, OwnedKVList, Drain, Key, KV, Level};
+use slog::{self, OwnedKVList, Drain, Key, KV, Level, Logger};
 use sloggers::types::Severity;
 
 use super::{nanos, file_logger};
@@ -363,7 +363,8 @@ impl<'a> slog::Serializer for TagBuilder<'a> {
 pub struct WarningsDrain<D: Drain> {
     level: Level,
     tx: Arc<Mutex<Sender<Warning>>>,
-    drain: D
+    drain: D,
+    to_file: Logger,
 }
 
 impl<D> WarningsDrain<D> 
@@ -371,7 +372,8 @@ impl<D> WarningsDrain<D>
 {
     pub fn new(tx: Sender<Warning>, level: Level, drain: D) -> Self {
         let tx = Arc::new(Mutex::new(tx));
-        WarningsDrain { tx, drain, level }
+        let to_file = file_logger("var/log/mm.log", Severity::Warning);
+        WarningsDrain { tx, drain, level, to_file }
     }
 }
 
@@ -401,6 +403,9 @@ impl<D: Drain> Drain for WarningsDrain<D> {
                     kv: ser 
                 });
             }
+        }
+        if record.level() <= Level::Warning {
+            let _ = self.to_file.log(record);
         }
         let _ = self.drain.log(record, values)?;
         Ok(())
