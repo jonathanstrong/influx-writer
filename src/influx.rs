@@ -243,6 +243,7 @@ pub enum OwnedValue {
     Boolean(bool)
 }
 
+#[derive(Clone)]
 pub struct OwnedMeasurement {
     pub key: &'static str,
     pub timestamp: Option<i64>,
@@ -279,6 +280,11 @@ impl OwnedMeasurement {
 
     pub fn set_timestamp(mut self, timestamp: i64) -> Self {
         self.timestamp = Some(timestamp);
+        self
+    }
+
+    pub fn set_tag(mut self, key: &'static str, value: &'static str) -> Self {
+        *self.tags.entry(key).or_insert(value) = value;
         self
     }
 }
