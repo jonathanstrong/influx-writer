@@ -24,7 +24,7 @@ use warnings::Warning;
 const WRITER_ADDR: &'static str = "ipc:///tmp/mm/influx";
 //const WRITER_ADDR: &'static str = "tcp://127.0.0.1:17853";
 const DB_NAME: &'static str = "mm";
-const DB_HOST: &'static str = "http://localhost:8086/write";
+const DB_HOST: &'static str = "http://washington.0ptimus.internal:8086/write";
 //const DB_HOST: &'static str = "http://harrison.0ptimus.internal:8086/write";
 const ZMQ_RCV_HWM: i32 = 0; 
 const ZMQ_SND_HWM: i32 = 0; 
