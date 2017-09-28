@@ -417,7 +417,7 @@ impl InfluxWriter {
 
                 if !rcvd_msg {
                     #[cfg(feature = "no-thrash")]
-                    thread::sleep(Duration::from_millis(1) / 10);
+                    shuteye::sleep(Duration::new(0, 5000));
                 }
             }
 

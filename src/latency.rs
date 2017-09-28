@@ -10,6 +10,7 @@ use pub_sub::PubSub;
 use zmq;
 use influent::measurement::{Measurement, Value};
 use sloggers::types::Severity;
+use shuteye;
 
 use windows::{DurationWindow, Incremental};
 use money::{Ticker, Side, ByExchange, Exchange};
@@ -402,7 +403,7 @@ impl Manager {
                     debug!(logger, "sent broadcast");
                 } else {
                     #[cfg(feature = "no-thrash")]
-                    thread::sleep(Duration::from_millis(1) / 10);
+                    shuteye::sleep(Duration::new(0, 1000));
                 }
 
                 if terminate { break }

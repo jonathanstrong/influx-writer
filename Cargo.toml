@@ -13,6 +13,7 @@ pub-sub = "2.0"
 slog = "2.0.6"
 sloggers = "0.2"
 slog-term = "2"
+shuteye = "^0"
 
 windows = { path = "../windows" }
 money = { path = "../money" }
