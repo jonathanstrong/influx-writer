@@ -12,14 +12,11 @@ use influent::measurement::{Measurement, Value};
 use sloggers::types::Severity;
 use shuteye;
 
-use windows::{DurationWindow, Incremental};
+use windows::{DurationWindow, Incremental, Window};
 use money::{Ticker, Side, ByExchange, Exchange};
 
 use super::file_logger;
 use influx::{self, OwnedMeasurement, OwnedValue};
-
-
-
 
 pub type Nanos = u64;
 
@@ -127,6 +124,8 @@ pub enum ExperiencedLatency {
 
     EventLoop(Duration),
 
+    PlnxWs(Ticker),
+
     Terminate
 }
 
@@ -219,6 +218,8 @@ pub struct LatencyUpdate<W>
     pub plnx_last: DateTime<Utc>,
     pub krkn_last: DateTime<Utc>,
 
+    pub plnx_ws_count: u64,
+
     //pub event_loop: Nanos,
 
     pub size: W,
@@ -240,6 +241,8 @@ impl<W> Default for LatencyUpdate<W>
 
             krkn_trade_300_mean: Nanos::default(),
             krkn_trade_300_max: Nanos::default(),
+
+            plnx_ws_count: 0,
 
             plnx_last: Utc::now(),
             krkn_last: Utc::now(),
@@ -454,6 +457,7 @@ impl LatencyManager<WTen> {
             let mut plnx_pub = DurationWindow::new(w.duration());
             let mut plnx_priv = DurationWindow::new(w.duration());
             let mut plnx_order = DurationWindow::new(w.duration());
+            let mut plnx_ws_count: Window<u32> = Window::new(w.duration());
 
 
             // yes I am intentionally breaking from the hard-typed duration
@@ -508,6 +512,11 @@ impl LatencyManager<WTen> {
                         ExperiencedLatency::PlnxOrderBook(d) => {
                             last.plnx = loop_time;
                             plnx_order.update(loop_time, d)
+                        }
+
+                        ExperiencedLatency::PlnxWs(_) => {
+                            last.plnx = loop_time;
+                            plnx_ws_count.update(loop_time, 1_u32);
                         }
 
                         ExperiencedLatency::KrknTrade(d, cmd, ticker, side) => {
@@ -565,6 +574,8 @@ impl LatencyManager<WTen> {
 
                         plnx_last: dt_from_dur(loop_time - last.plnx),
                         krkn_last: dt_from_dur(loop_time - last.krkn),
+
+                        plnx_ws_count: plnx_ws_count.refresh(&loop_time).count() as u64,
 
                         //event_loop: event_loop.refresh(&now).mean_nanos(),
                         size: w.clone(),
