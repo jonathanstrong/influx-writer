@@ -11,6 +11,7 @@ use zmq;
 use influent::measurement::{Measurement, Value};
 use sloggers::types::Severity;
 use shuteye;
+//use chashmap::CHashMap;
 
 use windows::{DurationWindow, Incremental, Window};
 use money::{Ticker, Side, ByExchange, Exchange};
