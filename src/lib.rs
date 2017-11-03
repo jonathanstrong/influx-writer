@@ -12,13 +12,14 @@ extern crate influent;
 extern crate chrono;
 extern crate hyper;
 extern crate termion;
-extern crate pub_sub;
+//extern crate pub_sub;
 extern crate sloggers;
 extern crate slog_term;
 extern crate shuteye;
 //extern crate chashmap;
 
 extern crate windows;
+extern crate pubsub as pub_sub;
 
 use std::sync::Arc;
 

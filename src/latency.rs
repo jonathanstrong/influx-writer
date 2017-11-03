@@ -182,24 +182,6 @@ impl Default for Update {
     }
 }
 
-// impl Update {
-//     pub fn new(window: Duration) -> Self {
-//         Update {
-//             window,
-//             ws: OrderMap::new(),
-//             http: 0,
-//             trade: OrderMap::new(),
-//         }
-//     }
-// }
-
-// #[derive(Clone)]
-// pub struct Updates {
-//     pub gdax_5: Update,
-//     pub gdax_30: Update,
-//     pub last: ByExchange<DateTime<Utc>>
-// }
-
 #[derive(Debug, Clone)]
 pub struct LatencyUpdate<W> 
     where W: MeasurementWindow
@@ -295,7 +277,6 @@ impl<W: MeasurementWindow> LatencyUpdate<W> {
     pub fn measurement_window(&self) -> Duration {
         self.size.duration()
     }
-
 }
 
 pub struct Manager {
@@ -459,7 +440,6 @@ impl LatencyManager<WTen> {
             let mut plnx_priv = DurationWindow::new(w.duration());
             let mut plnx_order = DurationWindow::new(w.duration());
             let mut plnx_ws_count: Window<u32> = Window::new(w.duration());
-
 
             // yes I am intentionally breaking from the hard-typed duration
             // window ... that was a stupid idea
