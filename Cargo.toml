@@ -22,3 +22,4 @@ pubsub = { path = "../pubsub" }
 
 [features]
 no-thrash = []
+trace = []
