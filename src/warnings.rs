@@ -722,10 +722,17 @@ mod tests {
     use test::{black_box, Bencher};
 
     #[test]
+    #[ignore]
     fn it_creates_a_logger() {
         let wm = WarningsManager::new("rust-test");
         let im = influx::writer(wm.tx.clone());
-        let drain = WarningsDrain { tx: Arc::new(Mutex::new(wm.tx.clone())), drain: slog::Discard };
+        let drain = 
+            WarningsDrain { 
+                tx: Arc::new(Mutex::new(wm.tx.clone())), 
+                drain: slog::Discard,
+                to_file: Logger::root(slog::Discard, o!()),
+                level: Level::Trace,
+            };
         let logger = slog::Logger::root(drain, o!());
         //for _ in 0..60 {
         //    debug!(logger, "test 123"; "exchange" => "plnx");
@@ -756,7 +763,7 @@ mod tests {
         });
         tx.lock().unwrap().send(Msg::Terminate);
         let len = worker.join().unwrap();
-        println!("{}", len);
+        //println!("{}", len);
 
     }
 }

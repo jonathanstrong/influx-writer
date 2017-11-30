@@ -445,6 +445,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn it_spawns_a_writer_thread_and_sends_dummy_measurement_to_influxdb() {
         let ctx = zmq::Context::new();
         let socket = push(&ctx).unwrap();

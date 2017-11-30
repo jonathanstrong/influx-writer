@@ -15,7 +15,7 @@ fn main() {
     let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
     let plain_fuse = slog_term::FullFormat::new(plain).build().fuse();
     let w = logging::warnings::WarningsManager::new("test");
-    let w_drain = logging::warnings::WarningsDrain::new(w.tx.clone(), plain_fuse);
+    let w_drain = logging::warnings::WarningsDrain::new(w.tx.clone(), Level::Debug, plain_fuse);
     //let zmq_drain = ZmqDrain::new(plain_fuse);
     //let zmq_decorator = slog_term::PlainSyncDecorator::new(zmq_drain);
     //let zmq_fuse = slog_term::FullFormat::new(zmq_decorator).build().fuse();
