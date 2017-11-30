@@ -30,6 +30,37 @@ const DB_HOST: &'static str = "http://washington.0ptimus.internal:8086/write";
 const ZMQ_RCV_HWM: i32 = 0; 
 const ZMQ_SND_HWM: i32 = 0; 
 
+/// # Examples
+///
+/// ```rust,ignore
+///
+/// let M = // ... Sender<OwnedMeasurement>
+///
+/// measure![m; meas_name] {
+///     tag   [ "ticker" => "xmr_btc" ],
+///     int   [ "len" => 2 ]
+///     float [ "x" => 1.234 ]
+///     time  [ now() ]
+/// };
+/// ```
+///
+/// Resolves to:
+///
+/// ```rust,ignore
+/// let measurements = // ...
+///
+/// measurements.send(
+///     OwnedMeasurement::new("meas_name")
+///         .add_tag("ticker", "xmr_btc")
+///         .add_field("len", OwnedValue::Integer(2))
+///         .add_field("x", OwnedValue::Float(1.234))
+///         .set_timestamp(now() as i64));
+/// ```
+///
+macro_rules! measure {
+    () => {}
+}
+
 pub fn pull(ctx: &zmq::Context) -> Result<zmq::Socket, zmq::Error> {
     let socket = ctx.socket(zmq::PULL)?;
     socket.bind(WRITER_ADDR)?;
@@ -460,6 +491,7 @@ impl Drop for InfluxWriter {
 
 mod tests {
     use super::*;
+    use test::{black_box, Bencher};
 
     #[test]
     #[ignore]
@@ -598,8 +630,5 @@ mod tests {
                 panic!(why)
             }
         }
-
     }
-
-
 }
