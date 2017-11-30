@@ -528,6 +528,44 @@ mod tests {
 
     }
 
+    #[bench]
+    fn serialize_owned_longer(b: &mut Bencher) {
+        let mut buf = String::with_capacity(1024);
+        let m = 
+            OwnedMeasurement::new("test")
+                .add_tag("one", "a")
+                .add_tag("two", "b")
+                .add_tag("ticker", "xmr_btc")
+                .add_tag("exchange", "plnx")
+                .add_tag("side", "bid")
+                .add_field("three", OwnedValue::Float(1.2345))
+                .add_field("four", OwnedValue::Integer(57))
+                .add_field("five", OwnedValue::Boolean(true))
+                .add_field("six", OwnedValue::String(String::from("abcdefghijklmnopqrstuvwxyz")))
+                .set_timestamp(now());
+        b.iter(|| {
+            serialize_owned(&m, &mut buf);
+            buf.clear()
+        });
+    }
+
+    #[bench]
+    fn serialize_owned_simple(b: &mut Bencher) {
+        let mut buf = String::with_capacity(1024);
+        let m = 
+            OwnedMeasurement::new("test")
+                .add_tag("one", "a")
+                .add_tag("two", "b")
+                .add_field("three", OwnedValue::Float(1.2345))
+                .add_field("four", OwnedValue::Integer(57))
+                .set_timestamp(now());
+        b.iter(|| {
+            serialize_owned(&m, &mut buf);
+            buf.clear()
+        });
+    }
+
+
     #[test]
     fn it_serializes_a_hard_to_serialize_message_from_owned() {
         let raw = r#"error encountered trying to send krkn order: Other("Failed to send http request: Other("Resource temporarily unavailable (os error 11)")")"#;
