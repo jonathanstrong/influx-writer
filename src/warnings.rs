@@ -26,7 +26,7 @@ const N_WARNINGS: usize = 500;
 macro_rules! confirmed {
     ($warnings:ident, $($args:tt)*) => (
         {
-            $warnings.send(Warning::Confirmed( ( format!($($args)*) ) ) ).unwrap();
+            $let _ = warnings.send(Warning::Confirmed( ( format!($($args)*) ) ) ).unwrap();
         }
     )
 }
@@ -136,51 +136,52 @@ impl Warning {
         }
     }
 
-    pub fn category(&self, f: &mut Formatter) {
-        match self {
-            &Warning::Notice(_) => {
-                write!(f, "[ Notice ]");
+    pub fn category(&self, f: &mut Formatter) -> fmt::Result {
+        match *self {
+            Warning::Notice(_) => {
+                write!(f, "[ Notice ]")
             }
 
-            &Warning::Error(_) => {
+            Warning::Error(_) => {
                 write!(f, "{yellow}[{title}]{reset}", 
                     yellow = Fg(color::LightYellow),
                     title = " Error--",
-                    reset = Fg(color::Reset));
+                    reset = Fg(color::Reset))
             }
-            &Warning::Critical(_) => {
+
+            Warning::Critical(_) => {
                 write!(f, "{bg}{fg}{title}{resetbg}{resetfg}", 
                         bg = Bg(color::Red),
                         fg = Fg(color::White),
                         title = " CRITICAL ",
                         resetbg = Bg(color::Reset),
-                        resetfg = Fg(color::Reset));
+                        resetfg = Fg(color::Reset))
             }
 
-            &Warning::Awesome(_) => {
+            Warning::Awesome(_) => {
                 write!(f, "{color}[{title}]{reset}", 
                         color = Fg(color::Green),
                         title = "Awesome!",
-                        reset = Fg(color::Reset));
+                        reset = Fg(color::Reset))
             }
 
-            &Warning::DegradedService(_) => {
+            Warning::DegradedService(_) => {
                 write!(f, "{color}[{title}] {reset}", 
                         color = Fg(color::Blue),
                         title = "Degraded Service ",
-                        reset = Fg(color::Reset));
+                        reset = Fg(color::Reset))
             }
-            &Warning::Confirmed(_) => {
+
+            Warning::Confirmed(_) => {
                 write!(f, "{bg}{fg}{title}{resetbg}{resetfg}", 
                         bg = Bg(color::Blue),
                         fg = Fg(color::White),
                         title = "Confirmed ",
                         resetbg = Bg(color::Reset),
-                        resetfg = Fg(color::Reset));
+                        resetfg = Fg(color::Reset))
             }
 
-
-            _ => {}
+            _ => Ok(())
         }
     }
 }
@@ -394,7 +395,7 @@ impl<D: Drain> Drain for WarningsDrain<D> {
             record.kv().serialize(record, &mut ser);
             let msg = record.msg().to_string();
             if let Ok(lock) = self.tx.lock() {
-                lock.send(Warning::Log { 
+                let _ = lock.send(Warning::Log { 
                     level: record.level(),
                     module: record.module(),
                     function: record.function(),
@@ -450,7 +451,7 @@ impl WarningsManager {
                             meas.add_field("msg", InfluentValue::String(msg.as_ref()));
                             meas.add_tag("category", level.as_short_str());
                             influx::serialize(&meas, &mut buf);
-                            socket.send_str(&buf, 0);
+                            let _ = socket.send_str(&buf, 0);
                             buf.clear();
                             // and don't push to warnings
                             // bc it's debug
@@ -463,7 +464,7 @@ impl WarningsManager {
                             {
                                 let m = rec.to_measurement(measurement_name);
                                 influx::serialize(&m, &mut buf);
-                                socket.send_str(&buf, 0);
+                                let _ = socket.send_str(&buf, 0);
                                 buf.clear();
                             }
                             if let Ok(mut lock) = warnings.write() {
@@ -486,7 +487,7 @@ impl WarningsManager {
 
 impl Drop for WarningsManager {
     fn drop(&mut self) {
-        self.tx.send(Warning::Terminate);
+        let _ = self.tx.send(Warning::Terminate);
         if let Some(thread) = self.thread.take() {
             thread.join();
         }
@@ -552,7 +553,7 @@ impl<D> Drain for ZmqDrain<D>
                 values.serialize(record, &mut kv_ser);
             }
 
-            self.socket.send(&buf, 0);
+            let _ = self.socket.send(&buf, 0);
             buf.clear();
         }
         self.drain.log(record, values)
@@ -588,12 +589,12 @@ impl Write for ZmqIo {
     fn flush(&mut self) -> io::Result<()> {
         match self.buf.pop() {
             Some(b'\n') => {
-                self.socket.send(&self.buf, 0);
+                let _ = self.socket.send(&self.buf, 0);
             }
 
             Some(other) => {
                 self.buf.push(other);
-                self.socket.send(&self.buf, 0);
+                let _ = self.socket.send(&self.buf, 0);
             }
 
             None => {
@@ -759,9 +760,9 @@ mod tests {
         let tx = Arc::new(Mutex::new(tx));
         b.iter(|| {
             let lock = tx.lock().unwrap();
-            lock.send(Msg::Val(1));
+            let _ = lock.send(Msg::Val(1));
         });
-        tx.lock().unwrap().send(Msg::Terminate);
+        let _ = tx.lock().unwrap().send(Msg::Terminate);
         let len = worker.join().unwrap();
         //println!("{}", len);
 

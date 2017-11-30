@@ -225,9 +225,6 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
     }
 }
 
-
-
-
 pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let _ = fs::create_dir("/tmp/mm");
@@ -262,14 +259,14 @@ pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
 
                                 Ok(mut resp) =>  {
                                     resp.read_to_string(&mut server_resp); //.unwrap_or(0);
-                                    warnings.send(
+                                    let _ = warnings.send(
                                         Warning::Error(
                                             format!("Influx server: {}", server_resp)));
                                     server_resp.clear();
                                 }
 
                                 Err(why) => {
-                                    warnings.send(
+                                    let _ = warnings.send(
                                         Warning::Error(
                                             format!("Influx write error: {}", why)));
                                 }
@@ -292,7 +289,7 @@ pub enum OwnedValue {
     Boolean(bool)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OwnedMeasurement {
     pub key: &'static str,
     pub timestamp: Option<i64>,
@@ -482,7 +479,7 @@ impl InfluxWriter {
 
 impl Drop for InfluxWriter {
     fn drop(&mut self) {
-        self.kill_switch.send(());
+        let _ = self.kill_switch.send(()).unwrap();
         if let Some(thread) = self.thread.take() {
             let _ = thread.join();
         }
