@@ -75,6 +75,14 @@ pub fn push(ctx: &zmq::Context) -> Result<zmq::Socket, zmq::Error> {
     Ok(socket)
 }
 
+/// This removes offending things rather than escaping them.
+///
+fn escape_tag(s: &str) -> String {
+    s.replace(" ", "")
+     .replace(",", "")
+     .replace("\"", "")
+}
+
 fn escape(s: &str) -> String {
     s.replace(" ", "\\ ")
      .replace(",", "\\,")
@@ -167,11 +175,11 @@ pub fn serialize(measurement: &Measurement, line: &mut String) {
 }
 
 pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
-    line.push_str(&escape(measurement.key));
+    line.push_str(&escape_tag(measurement.key));
 
     let add_tag = |line: &mut String, key: &str, value: &str| {
         line.push_str(",");
-        line.push_str(&escape(key));
+        line.push_str(&escape_tag(key));
         line.push_str("=");
         line.push_str(&escape(value));
     };
@@ -184,41 +192,34 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
         add_tag(line, key, value);
     }
 
-    //let mut was_spaced = false;
+    let mut fields = measurement.fields.iter();
+
+    let add_field = |line: &mut String, key: &str, value: &OwnedValue| {
+        line.push_str(" ");
+        line.push_str(&escape_tag(key));
+        line.push_str("=");
+        match value {
+            &OwnedValue::String(ref s)  => line.push_str(&as_string(s)),
+            &OwnedValue::Integer(ref i) => line.push_str(&format!("{}i", i)),
+            &OwnedValue::Float(ref f)   => line.push_str(&format!("{}", f)),
+            &OwnedValue::Boolean(ref b) => line.push_str(as_boolean(b))
+        };
+    };
+
     let mut fields = measurement.fields.iter();
 
     // first time separate from tags with space
     //
     fields.next().map(|kv| {
-        line.push_str(" ");
-        line.push_str(&escape(kv.0));
-        line.push_str("=");
-        match kv.1 {
-            &OwnedValue::String(ref s)  => line.push_str(&as_string(s)),
-            &OwnedValue::Integer(ref i) => line.push_str(&as_integer(i)),
-            &OwnedValue::Float(ref f)   => line.push_str(&as_float(f)),
-            &OwnedValue::Boolean(ref b) => line.push_str(as_boolean(b))
-        };
+        add_field(line, kv.0, kv.1);
     });
 
-    //for (field, value) in measurement.fields.iter() {
-    // subsequent times seperate with comma
+    // then seperate the rest w/ comma
+    //
     for kv in fields {
-        //line.push_str({if !was_spaced { was_spaced = true; " " } else { "," }});
-        //line.push_str(&escape(field));
-        line.push_str(",");
-        line.push_str(&escape(kv.0));
-        line.push_str("=");
-
-        match kv.1 {
-            &OwnedValue::String(ref s)  => line.push_str(&as_string(s)),
-            &OwnedValue::Integer(ref i) => line.push_str(&as_integer(i)),
-            &OwnedValue::Float(ref f)   => line.push_str(&as_float(f)),
-            &OwnedValue::Boolean(ref b) => line.push_str(as_boolean(b))
-        };
+        add_field(line, kv.0, kv.1);
     }
 
-    //match measurement.timestamp {
     if let Some(t) = measurement.timestamp {
         line.push_str(" ");
         line.push_str(&t.to_string());
