@@ -10,7 +10,6 @@ use pub_sub::PubSub;
 use zmq;
 use influent::measurement::{Measurement, Value};
 use sloggers::types::Severity;
-use shuteye;
 //use chashmap::CHashMap;
 
 use windows::{DurationWindow, Incremental, Window};
@@ -388,7 +387,7 @@ impl Manager {
                     debug!(logger, "sent broadcast");
                 } else {
                     #[cfg(feature = "no-thrash")]
-                    shuteye::sleep(Duration::new(0, 1000));
+                    thread::sleep(Duration::new(0, 1000));
                 }
 
                 if terminate { break }

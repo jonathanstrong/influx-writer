@@ -17,7 +17,6 @@ use influent::measurement::{Measurement, Value};
 use zmq;
 use chrono::{DateTime, Utc, TimeZone};
 use sloggers::types::Severity;
-use shuteye;
 
 use super::{nanos, file_logger};
 use warnings::Warning;
@@ -568,9 +567,11 @@ impl InfluxWriter {
 
                 if end { break }
 
-                if !rcvd_msg {
-                    #[cfg(feature = "no-thrash")]
-                    shuteye::sleep(Duration::new(0, 5000));
+                #[cfg(feature = "no-thrash")]
+                {
+                    if !rcvd_msg {
+                        thread::sleep(Duration::new(0, 5000));
+                    }
                 }
             }
 

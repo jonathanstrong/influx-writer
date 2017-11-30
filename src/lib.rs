@@ -15,7 +15,7 @@ extern crate termion;
 //extern crate pub_sub;
 extern crate sloggers;
 extern crate slog_term;
-extern crate shuteye;
+//extern crate shuteye;
 //extern crate chashmap;
 
 extern crate windows;
