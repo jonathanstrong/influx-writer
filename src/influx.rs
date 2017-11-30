@@ -29,6 +29,8 @@ const DB_HOST: &'static str = "http://washington.0ptimus.internal:8086/write";
 const ZMQ_RCV_HWM: i32 = 0; 
 const ZMQ_SND_HWM: i32 = 0; 
 
+const N_BUFFER: u8 = 160;
+
 /// Provides flexible and ergonomic use of `Sender<OwnedMeasurement>`.
 ///
 /// The macro both creates an `OwnedMeasurement` from the supplied tags and
@@ -479,7 +481,7 @@ impl InfluxWriter {
             let mut count = 0;
 
             let next = |prev: u8, s: &str, buf: &mut String| -> u8 {
-                debug!(logger, "appending serialized measurement to buffer";
+                trace!(logger, "appending serialized measurement to buffer";
                        "prev" => prev,
                        "buf.len()" => buf.len());
                 match prev {
@@ -488,7 +490,7 @@ impl InfluxWriter {
                         1
                     }
 
-                    n @ 1...80 => {
+                    n @ 1 ... N_BUFFER => {
                         buf.push_str("\n");
                         buf.push_str(s);
                         n + 1
@@ -499,7 +501,7 @@ impl InfluxWriter {
                         if s.len() > 0 {
                             buf.push_str(s);
                         }
-                        debug!(logger, "sending buffer to influx";
+                        trace!(logger, "sending buffer to influx";
                                "buf.len()" => buf.len());
 
                         let resp = client.post(url.clone())
