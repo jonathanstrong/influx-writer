@@ -153,14 +153,33 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
         add_tag(line, key, value);
     }
 
-    let mut was_spaced = false;
+    //let mut was_spaced = false;
+    let mut fields = measurement.fields.iter();
 
-    for (field, value) in measurement.fields.iter() {
-        line.push_str({if !was_spaced { was_spaced = true; " " } else { "," }});
-        line.push_str(&escape(field));
+    // first time separate from tags with space
+    //
+    fields.next().map(|kv| {
+        line.push_str(" ");
+        line.push_str(&escape(kv.0));
+        line.push_str("=");
+        match kv.1 {
+            &OwnedValue::String(ref s)  => line.push_str(&as_string(s)),
+            &OwnedValue::Integer(ref i) => line.push_str(&as_integer(i)),
+            &OwnedValue::Float(ref f)   => line.push_str(&as_float(f)),
+            &OwnedValue::Boolean(ref b) => line.push_str(as_boolean(b))
+        };
+    });
+
+    //for (field, value) in measurement.fields.iter() {
+    // subsequent times seperate with comma
+    for kv in fields {
+        //line.push_str({if !was_spaced { was_spaced = true; " " } else { "," }});
+        //line.push_str(&escape(field));
+        line.push_str(",");
+        line.push_str(&escape(kv.0));
         line.push_str("=");
 
-        match value {
+        match kv.1 {
             &OwnedValue::String(ref s)  => line.push_str(&as_string(s)),
             &OwnedValue::Integer(ref i) => line.push_str(&as_integer(i)),
             &OwnedValue::Float(ref f)   => line.push_str(&as_float(f)),
@@ -168,12 +187,10 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
         };
     }
 
-    match measurement.timestamp {
-        Some(t) => {
-            line.push_str(" ");
-            line.push_str(&t.to_string());
-        }
-        _ => {}
+    //match measurement.timestamp {
+    if let Some(t) = measurement.timestamp {
+        line.push_str(" ");
+        line.push_str(&t.to_string());
     }
 }
 
