@@ -1,6 +1,6 @@
 [package]
 name = "logging"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Jonathan Strong <jstrong@legis.io>"]
 
 [dependencies]
@@ -13,7 +13,6 @@ termion = "1.4.0"
 slog = "2.0.6"
 sloggers = "0.2"
 slog-term = "2"
-# shuteye = "^0"
 # chashmap = "2"
 
 windows = { path = "../windows" }
