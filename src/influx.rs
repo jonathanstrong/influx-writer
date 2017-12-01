@@ -112,6 +112,7 @@ pub fn new_map<K, V>(capacity: usize) -> Map<K, V> {
 macro_rules! measure {
     (@kv $t:tt, $meas:ident, $k:tt => $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
     (@kv $t:tt, $meas:ident, $k:tt; $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
+    (@kv $t:tt, $meas:ident, $k:tt, $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
     (@kv time, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp($tm as i64) };
     (@kv tm, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp($tm as i64) };
     (@ea tag, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
@@ -137,6 +138,10 @@ macro_rules! measure {
     (@count_fields time $($tail:tt)*) => {0usize + measure!(@count_fields $($tail)*)};
     (@count_fields $t:tt $($tail:tt)*) => {1usize + measure!(@count_fields $($tail)*)};
 
+    (@make_meas $name:tt, $( $t:tt ( $($tail:tt)* ) ),+ $(,)*) => {
+        measure!(@make_meas $name, $( $t [ $($tail)* ] ),*)
+    };
+
     (@make_meas $name:tt, $( $t:tt [ $($tail:tt)* ] ),+ $(,)*) => {{
         let n_tags = measure!(@count_tags $($t)*);
         let n_fields = measure!(@count_fields $($t)*);
@@ -147,6 +152,10 @@ macro_rules! measure {
         )*
         meas
     }};
+
+    ($m:tt, $name:tt, $( $t:tt ( $($tail:tt)* ) ),+ $(,)*) => {
+        measure!($m, $name, $($t [ $($tail)* ] ),+ $(,)*)
+    };
 
     ($m:tt, $name:tt, $( $t:tt [ $($tail:tt)* ] ),+ $(,)*) => {{
         let measurement = measure!(@make_meas $name, $( $t [ $($tail)* ] ),*);
@@ -618,6 +627,16 @@ pub fn dur_nanos(d: ::std::time::Duration) -> i64 {
 mod tests {
     use super::*;
     use test::{black_box, Bencher};
+
+    #[test]
+    fn it_uses_measure_macro_parenthesis_syntax() {
+        let m = measure!(@make_meas test, t(a,"b"), i(n,1), f(x,1.1), tm(1));
+        assert_eq!(m.key, "test");
+        assert_eq!(m.tags.get("a"), Some(&"b"));
+        assert_eq!(m.fields.get("n"), Some(&OwnedValue::Integer(1)));
+        assert_eq!(m.fields.get("x"), Some(&OwnedValue::Float(1.1)));
+        assert_eq!(m.timestamp, Some(1));
+    }
 
     #[bench]
     fn influx_writer_send_basic(b: &mut Bencher) {
