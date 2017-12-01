@@ -55,8 +55,10 @@ pub fn new_map<K, V>(capacity: usize) -> Map<K, V> {
 ///
 /// ```
 /// #[macro_use] extern crate logging;
+/// extern crate decimal;
 ///
 /// use std::sync::mpsc::channel;
+/// use decimal::d128;
 /// use logging::influx::*;
 ///
 /// fn main() {
@@ -93,6 +95,16 @@ pub fn new_map<K, V>(capacity: usize) -> Map<K, V> {
 ///     assert_eq!(meas.fields.get("three"), Some(&OwnedValue::Integer(2)));
 ///     assert_eq!(meas.fields.get("seven"), Some(&OwnedValue::Integer(3)));
 ///     assert_eq!(meas.timestamp, Some(1));
+///
+///     // use the @make_meas flag to skip sending a measurement, instead merely
+///     // creating it. 
+///
+///     let meas: OwnedMeasurement = measure!(@make_meas meas_only, tag[color; "red"], int[n; 1]);
+///
+///     // each variant also has shorthand aliases
+///
+///     let meas: OwnedMeasurement = 
+///         measure!(@make_meas abcd, t[color; "red"], i[n; 1], d[price; d128::zero()]);
 /// }
 /// ```
 ///
@@ -101,12 +113,19 @@ macro_rules! measure {
     (@kv $t:tt, $meas:ident, $k:tt => $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
     (@kv $t:tt, $meas:ident, $k:tt; $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
     (@kv time, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp($tm as i64) };
+    (@kv tm, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp($tm as i64) };
     (@ea tag, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
+    (@ea t, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
     (@ea int, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Integer($v)) };
+    (@ea i, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Integer($v)) };
     (@ea float, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Float($v)) };
+    (@ea f, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Float($v)) };
     (@ea string, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::String($v)) };
+    (@ea s, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::String($v)) };
     (@ea d128, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::D128($v)) };
+    (@ea d, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::D128($v)) };
     (@ea uuid, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Uuid($v)) };
+    (@ea u, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Uuid($v)) };
     (@ea bool, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Boolean($v)) };
     
     (@count_tags) => {0usize};
@@ -118,7 +137,7 @@ macro_rules! measure {
     (@count_fields time $($tail:tt)*) => {0usize + measure!(@count_fields $($tail)*)};
     (@count_fields $t:tt $($tail:tt)*) => {1usize + measure!(@count_fields $($tail)*)};
 
-    ($m:tt, $name:tt, $( $t:tt [ $($tail:tt)* ] ),+ $(,)*) => {{
+    (@make_meas $name:tt, $( $t:tt [ $($tail:tt)* ] ),+ $(,)*) => {{
         let n_tags = measure!(@count_tags $($t)*);
         let n_fields = measure!(@count_fields $($t)*);
         let mut meas = 
@@ -126,7 +145,12 @@ macro_rules! measure {
         $(
             measure!(@kv $t, meas, $($tail)*);
         )*
-        let _ = $m.send(meas);
+        meas
+    }};
+
+    ($m:tt, $name:tt, $( $t:tt [ $($tail:tt)* ] ),+ $(,)*) => {{
+        let measurement = measure!(@make_meas $name, $( $t [ $($tail)* ] ),*);
+        let _ = $m.send(measurement);
     }};
 }
 
@@ -417,14 +441,10 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
         add_tag(line, key, value);
     }
 
-    // for (key, value) in measurement.string_tags.iter() {
-    //     add_tag(line, key, value);
-    // }
-
     let mut fields = measurement.fields.iter();
 
-    let add_field = |line: &mut String, key: &str, value: &OwnedValue| {
-        line.push_str(" ");
+    let add_field = |line: &mut String, key: &str, value: &OwnedValue, is_first: bool| {
+        if is_first { line.push_str(" "); } else { line.push_str(","); }
         line.push_str(&escape_tag(key));
         line.push_str("=");
         match *value {
@@ -442,13 +462,13 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
     // first time separate from tags with space
     //
     fields.next().map(|kv| {
-        add_field(line, kv.0, kv.1);
+        add_field(line, kv.0, kv.1, true);
     });
 
     // then seperate the rest w/ comma
     //
     for kv in fields {
-        add_field(line, kv.0, kv.1);
+        add_field(line, kv.0, kv.1, false);
     }
 
     if let Some(t) = measurement.timestamp {
@@ -456,6 +476,19 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
         line.push_str(&t.to_string());
     }
 }
+
+#[test]
+fn it_checks_that_fields_are_separated_correctly() {
+    let m = measure!(@make_meas test, t[a; "one"], t[b; "two"], f[x; 1.1], f[y; -1.1]);
+    assert_eq!(m.key, "test");
+    assert_eq!(m.tags.get("a"), Some(&"one"));
+    assert_eq!(m.fields.get("x"), Some(&OwnedValue::Float(1.1)));
+
+    let mut buf = String::new();
+    serialize_owned(&m, &mut buf);
+    assert!(buf.contains("b=two x=1.1,y=-1.1"), "buf = {}", buf);
+}
+
 
 pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
@@ -613,6 +646,26 @@ mod tests {
         measure!(tx, test, tag[color;"red"], int[n;1]);
         let meas: OwnedMeasurement = rx.recv().unwrap();
         assert_eq!(meas.tags.get("color"), Some(&"red"), "meas = \n {:?} \n", meas);
+    }
+
+    #[test]
+    fn it_uses_the_make_meas_pattern_of_the_measure_macro() {
+        let meas = measure!(@make_meas test_measurement,
+            tag [ one => "a" ],
+            tag [ two => "b" ],
+            int [ three => 2 ],
+            float [ four => 1.2345 ],
+            string [ five => String::from("d") ],
+            bool [ six => true ],
+            int [ seven => { 1 + 2 } ],
+            time [ 1 ]
+        );
+        assert_eq!(meas.key, "test_measurement");
+        assert_eq!(meas.tags.get("one"), Some(&"a"));
+        assert_eq!(meas.tags.get("two"), Some(&"b"));
+        assert_eq!(meas.fields.get("three"), Some(&OwnedValue::Integer(2)));
+        assert_eq!(meas.fields.get("seven"), Some(&OwnedValue::Integer(3)));
+        assert_eq!(meas.timestamp, Some(1));
     }
 
     #[test]
