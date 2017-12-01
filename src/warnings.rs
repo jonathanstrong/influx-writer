@@ -26,7 +26,7 @@ const N_WARNINGS: usize = 500;
 macro_rules! confirmed {
     ($warnings:ident, $($args:tt)*) => (
         {
-            $let _ = warnings.send(Warning::Confirmed( ( format!($($args)*) ) ) ).unwrap();
+            let _ = warnings.send(Warning::Confirmed( ( format!($($args)*) ) ) ).unwrap();
         }
     )
 }
@@ -36,7 +36,7 @@ macro_rules! confirmed {
 macro_rules! awesome {
     ($warnings:ident, $($args:tt)*) => (
         {
-            $warnings.send(Warning::Awesome( ( format!($($args)*) ) ) ).unwrap();
+            let _ = $warnings.send(Warning::Awesome( ( format!($($args)*) ) ) ).unwrap();
         }
     )
 }
@@ -45,7 +45,7 @@ macro_rules! awesome {
 macro_rules! critical {
     ($warnings:ident, $($args:tt)*) => (
         {
-            $warnings.send(Warning::Critical( ( format!($($args)*) ) ) ).unwrap();
+            let _ = $warnings.send(Warning::Critical( ( format!($($args)*) ) ) ).unwrap();
         }
     )
 }
@@ -54,7 +54,7 @@ macro_rules! critical {
 macro_rules! notice {
     ($warnings:ident, $($args:tt)*) => (
         {
-            $warnings.send(Warning::Notice( ( format!($($args)*) ) ) ).unwrap();
+            let _ = $warnings.send(Warning::Notice( ( format!($($args)*) ) ) ).unwrap();
         }
     )
 }

@@ -14,9 +14,14 @@ slog = "2.0.6"
 sloggers = "0.2"
 slog-term = "2"
 # chashmap = "2"
+ordermap = "0.2"
+fnv = "1"
+uuid = { version = "0.5", features = ["serde", "v4"] }
 
-windows = { path = "../windows" }
-money = { path = "../money" }
+decimal = { path = "../decimal", version = "2" }
+
+windows = { path = "../windows", version = "0.1" }
+money = { path = "../money", version = "0.1" }
 pubsub = { path = "../pubsub" }
 
 [features]

@@ -15,6 +15,10 @@ extern crate termion;
 //extern crate pub_sub;
 extern crate sloggers;
 extern crate slog_term;
+extern crate fnv;
+extern crate ordermap;
+extern crate decimal;
+extern crate uuid;
 //extern crate shuteye;
 //extern crate chashmap;
 

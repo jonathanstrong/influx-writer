@@ -360,7 +360,7 @@ impl Manager {
                             let nanos = DurationWindow::nanos(dur);
                             measurements.send(
                                 OwnedMeasurement::new("gdax_trade_api")
-                                    .add_string_tag("ticker", ticker.to_string())
+                                    .add_tag("ticker", ticker.to_str())
                                     .add_field("nanos", OwnedValue::Integer(nanos as i64))
                                     .set_timestamp(influx::now()));
                         }
