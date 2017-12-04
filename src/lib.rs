@@ -50,3 +50,13 @@ pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
     builder.timezone(TimeZone::Utc);
     builder.build().unwrap()
 }
+
+pub fn dt_nanos(t: DateTime<Utc>) -> i64 {
+    (t.timestamp() as i64) * 1_000_000_000_i64 + (t.timestamp_subsec_nanos() as i64)
+}
+
+pub fn dur_nanos(d: ::std::time::Duration) -> i64 {
+    (d.as_secs() * 1_000_000_000_u64 + (d.subsec_nanos() as u64)) as i64
+}
+
+

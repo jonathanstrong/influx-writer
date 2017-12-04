@@ -37,6 +37,8 @@ const ZMQ_SND_HWM: i32 = 0;
 
 const BUFFER_SIZE: u8 = 80;
 
+pub use super::{dur_nanos, dt_nanos};
+
 pub type Map<K, V> = OrderMap<K, V, BuildHasherDefault<FnvHasher>>;
 
 pub fn new_map<K, V>(capacity: usize) -> Map<K, V> {
@@ -154,7 +156,7 @@ macro_rules! measure {
     }};
 
     ($m:tt, $name:tt, $( $t:tt ( $($tail:tt)* ) ),+ $(,)*) => {
-        measure!($m, $name, $($t [ $($tail)* ] ),+ $(,)*)
+        measure!($m, $name, $($t [ $($tail)* ] ),+)
     };
 
     ($m:tt, $name:tt, $( $t:tt [ $($tail:tt)* ] ),+ $(,)*) => {{
@@ -186,6 +188,10 @@ impl InfluxWriter {
     /// 
     pub fn send(&self, m: OwnedMeasurement) -> Result<(), SendError<OwnedMeasurement>> {
         self.tx.send(m)
+    }
+
+    pub fn tx(&self) -> Sender<OwnedMeasurement> {
+        self.tx.clone()
     }
 
     pub fn new(host: &'static str, db: &'static str, log_path: &str, buffer_size: u8) -> Self {
@@ -486,18 +492,6 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
     }
 }
 
-#[test]
-fn it_checks_that_fields_are_separated_correctly() {
-    let m = measure!(@make_meas test, t[a; "one"], t[b; "two"], f[x; 1.1], f[y; -1.1]);
-    assert_eq!(m.key, "test");
-    assert_eq!(m.tags.get("a"), Some(&"one"));
-    assert_eq!(m.fields.get("x"), Some(&OwnedValue::Float(1.1)));
-
-    let mut buf = String::new();
-    serialize_owned(&m, &mut buf);
-    assert!(buf.contains("b=two x=1.1,y=-1.1"), "buf = {}", buf);
-}
-
 
 pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
@@ -619,11 +613,7 @@ impl OwnedMeasurement {
     }
 }
 
-pub fn dur_nanos(d: ::std::time::Duration) -> i64 {
-    (d.as_secs() * 1_000_000_000_u64 + (d.subsec_nanos() as u64)) as i64
-}
-
-
+#[cfg(test)]
 mod tests {
     use super::*;
     use test::{black_box, Bencher};
@@ -759,10 +749,37 @@ mod tests {
     }
 
     #[test]
+    fn it_checks_that_fields_are_separated_correctly() {
+        let m = measure!(@make_meas test, t[a; "one"], t[b; "two"], f[x; 1.1], f[y; -1.1]);
+        assert_eq!(m.key, "test");
+        assert_eq!(m.tags.get("a"), Some(&"one"));
+        assert_eq!(m.fields.get("x"), Some(&OwnedValue::Float(1.1)));
+
+        let mut buf = String::new();
+        serialize_owned(&m, &mut buf);
+        assert!(buf.contains("b=two x=1.1,y=-1.1"), "buf = {}", buf);
+    }
+
+    #[test]
     fn try_to_break_measure_macro() {
         let (tx, _) = channel();
         measure!(tx, one, tag[x=>"y"], int[n;1]);
         measure!(tx, one, tag[x;"y"], int[n;1],);
+
+        struct A {
+            pub one: i32,
+            pub two: i32,
+        }
+
+        struct B {
+            pub a: A
+        }
+
+        let b = B { a: A { one: 1, two: 2 } };
+
+        let m = measure!(@make_meas test, t(name, "a"), i(a, b.a.one));
+
+        assert_eq!(m.fields.get("a"), Some(&OwnedValue::Integer(1)));
     }
 
     #[bench]
