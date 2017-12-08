@@ -117,6 +117,7 @@ macro_rules! measure {
     (@kv $t:tt, $meas:ident, $k:tt, $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
     (@kv time, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp($tm as i64) };
     (@kv tm, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp($tm as i64) };
+    (@kv $t:tt, $meas:ident, $k:tt) => { measure!(@ea $t, $meas, stringify!($k), measure!(@as_expr $k)) };
     (@ea tag, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
     (@ea t, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
     (@ea int, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Integer($v as i64)) };
@@ -131,6 +132,8 @@ macro_rules! measure {
     (@ea u, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Uuid($v)) };
     (@ea bool, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Boolean($v as bool)) };
     (@ea b, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Boolean($v as bool)) };
+
+    (@as_expr $e:expr) => {$e};
     
     (@count_tags) => {0usize};
     (@count_tags tag $($tail:tt)*) => {1usize + measure!(@count_tags $($tail)*)};
@@ -618,6 +621,17 @@ impl OwnedMeasurement {
 mod tests {
     use super::*;
     use test::{black_box, Bencher};
+
+    #[test]
+    fn it_uses_the_new_tag_k_only_shortcut() {
+        let tag_value = "one";
+        let color = "red";
+        let time = now();
+        let m = measure!(@make_meas test, t(color), t(tag_value), tm(time));
+        assert_eq!(m.tags.get("color"), Some(&"red"));
+        assert_eq!(m.tags.get("tag_value"), Some(&"one"));
+        assert_eq!(m.timestamp, Some(time));
+    }
 
     #[test]
     fn it_uses_measure_macro_parenthesis_syntax() {
