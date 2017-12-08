@@ -506,21 +506,21 @@ impl LatencyManager<WTen> {
                             let n = DurationWindow::nanos(d);
                             krkn_trade_30.update(loop_time, d);
                             krkn_trade_300.update(loop_time, d);
-                            let ticker_s = ticker.map(|t| t.to_string()).unwrap_or("".into());
-                            let side_s = side.map(|s| s.to_string()).unwrap_or("".into());
-                            let mut m = Measurement::new("krkn_trade_api");
-                            m.add_field("nanos", Value::Integer(n as i64));
-                            m.add_tag("cmd", cmd);
-                            if ticker.is_some() {
-                                m.add_tag("ticker", &ticker_s);
-                            }
-                            if side.is_some() {
-                                m.add_tag("side", &side_s);
-                            }
-                            m.set_timestamp(now());
-                            influx::serialize(&m, &mut buf);
-                            socket.send_str(&buf, 0);
-                            buf.clear();
+                            // let ticker_s = ticker.map(|t| t.to_string()).unwrap_or("".into());
+                            // let side_s = side.map(|s| s.to_string()).unwrap_or("".into());
+                            // let mut m = Measurement::new("krkn_trade_api");
+                            // m.add_field("nanos", Value::Integer(n as i64));
+                            // m.add_tag("cmd", cmd);
+                            // if ticker.is_some() {
+                            //     m.add_tag("ticker", &ticker_s);
+                            // }
+                            // if side.is_some() {
+                            //     m.add_tag("side", &side_s);
+                            // }
+                            // m.set_timestamp(now());
+                            // influx::serialize(&m, &mut buf);
+                            // socket.send_str(&buf, 0);
+                            // buf.clear();
                         }
                         //ExperiencedLatency::EventLoop(d) => event_loop.update(Instant::now(), d),
                         other => {
