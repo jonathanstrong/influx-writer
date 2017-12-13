@@ -1,6 +1,6 @@
 [package]
 name = "logging"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Jonathan Strong <jstrong@legis.io>"]
 
 [dependencies]
@@ -21,7 +21,7 @@ uuid = { version = "0.5", features = ["serde", "v4"] }
 decimal = { path = "../decimal", version = "2" }
 
 windows = { path = "../windows", version = "0.1" }
-money = { path = "../money", version = "0.1" }
+money = { path = "../money", version = "0.2" }
 pubsub = { path = "../pubsub" }
 
 [features]
