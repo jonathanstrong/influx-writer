@@ -159,7 +159,7 @@ macro_rules! measure {
         meas
     }};
 
-    ($m:tt, $name:tt, $( $t:tt ( $($tail:tt)* ) ),+ $(,)*) => {
+    ($m:expr, $name:tt, $( $t:tt ( $($tail:tt)* ) ),+ $(,)*) => {
         measure!($m, $name, $($t [ $($tail)* ] ),+)
     };
 
@@ -654,6 +654,23 @@ mod tests {
         assert_eq!(m.fields.get("n"), Some(&OwnedValue::Integer(1)));
         assert_eq!(m.fields.get("x"), Some(&OwnedValue::Float(1.1)));
         assert_eq!(m.timestamp, Some(1));
+    }
+
+    #[test]
+    fn it_uses_measure_macro_on_a_self_attribute() {
+        struct A {
+            pub influx: InfluxWriter,
+        }
+
+        impl A {
+            fn f(&self) {
+                measure!(self.influx, test, t(color, "red"), i(n, 1));
+            }
+        }
+
+        let a = A { influx: InfluxWriter::default() };
+
+        a.f();
     }
 
     #[bench]
