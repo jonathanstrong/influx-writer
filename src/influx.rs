@@ -187,6 +187,19 @@ impl Default for InfluxWriter {
     }
 }
 
+impl Clone for InfluxWriter {
+    fn clone(&self) -> Self {
+        let (tx, _) = channel();
+        InfluxWriter {
+            host: self.host,
+            db: self.db,
+            tx: self.tx.clone(),
+            kill_switch: tx,
+            thread: None,
+        }
+    }
+}
+
 impl InfluxWriter {
     /// Sends the `OwnedMeasurement` to the serialization thread. 
     /// 
