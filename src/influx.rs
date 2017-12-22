@@ -232,7 +232,7 @@ impl InfluxWriter {
                        "buf.len()" => buf.len());
 
                 match prev {
-                    0 => { 
+                    0 if buffer_size > 0 => {
                         buf.push_str(s);
                         1
                     }
