@@ -216,12 +216,12 @@ impl InfluxWriter {
         let (tx, rx) = channel();
         let logger = file_logger(log_path, Severity::Info);
         let thread = thread::spawn(move || {
-            info!(logger, "initializing url";
+            debug!(logger, "initializing url";
                   "DB_HOST" => host, 
                   "DB_NAME" => db);
             let url = Url::parse_with_params(&format!("http://{}:8086/write", host), &[("db", db), ("precision", "ns")]).expect("influx writer url should parse");
             let client = Client::new();
-            info!(logger, "initializing buffers");
+            debug!(logger, "initializing buffers");
             let mut meas_buf = String::with_capacity(32 * 32 * 32);
             let mut buf = String::with_capacity(32 * 32 * 32);
             let mut count = 0;
@@ -319,7 +319,7 @@ impl InfluxWriter {
                 }
             }
 
-            crit!(logger, "goodbye");
+            debug!(logger, "goodbye");
         });
 
         InfluxWriter {

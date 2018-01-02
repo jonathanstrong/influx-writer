@@ -44,7 +44,7 @@ pub fn nanos(t: DateTime<Utc>) -> u64 {
     (t.timestamp() as u64) * 1_000_000_000_u64 + (t.timestamp_subsec_nanos() as u64)
 }
 
-#[cfg(not(test))]
+#[cfg(not(any(test, feature = "test")))]
 pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
     let mut builder = FileLoggerBuilder::new(path);
     builder.level(level);
@@ -53,7 +53,7 @@ pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
 }
 
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test"))]
 pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
     use slog::*;
     Logger::root(Discard, o!())
