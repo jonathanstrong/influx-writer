@@ -4,6 +4,8 @@
 #![feature(test)]
 
 #[macro_use] extern crate slog;
+
+#[allow(unused_imports)]
 #[macro_use] extern crate money;
 
 extern crate test;
@@ -12,31 +14,27 @@ extern crate influent;
 extern crate chrono;
 extern crate hyper;
 extern crate termion;
-//extern crate pub_sub;
 extern crate sloggers;
 extern crate slog_term;
 extern crate fnv;
 extern crate ordermap;
 extern crate decimal;
 extern crate uuid;
-//extern crate shuteye;
-//extern crate chashmap;
 
 extern crate windows;
 extern crate pubsub as pub_sub;
 
-use std::sync::Arc;
-
 use chrono::{DateTime, Utc};
+#[allow(unused_imports)]
 use sloggers::Build;
+#[allow(unused_imports)]
 use sloggers::types::{Severity, TimeZone};
+#[allow(unused_imports)]
 use sloggers::file::FileLoggerBuilder;
 
 pub mod influx;
 pub mod warnings;
 pub mod latency;
-
-//pub type FileLogger = slog::Logger<Arc<slog::SendSyncRefUnwindSafeDrain<Ok=(), Err=slog::private::NeverStruct>>>;
 
 /// converts a chrono::DateTime to an integer timestamp (ns)
 ///
@@ -52,9 +50,8 @@ pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
     builder.build().unwrap()
 }
 
-
 #[cfg(any(test, feature = "test"))]
-pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
+pub fn file_logger(_: &str, _: Severity) -> slog::Logger {
     use slog::*;
     Logger::root(Discard, o!())
 }

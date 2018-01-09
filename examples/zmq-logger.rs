@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 #[macro_use] extern crate slog;
 extern crate logging;
 extern crate slog_term;

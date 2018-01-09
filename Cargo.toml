@@ -1,6 +1,6 @@
 [package]
 name = "logging"
-version = "0.2.3"
+version = "0.3.0"
 authors = ["Jonathan Strong <jstrong@legis.io>"]
 
 [dependencies]

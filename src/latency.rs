@@ -1,19 +1,14 @@
 use std::thread::{self, JoinHandle};
-use std::sync::{Arc, Mutex, RwLock};
-use std::sync::mpsc::{self, Sender, Receiver, channel};
-use std::collections::VecDeque;
-use std::fmt::{self, Display, Write};
+use std::sync::mpsc::{Sender, channel};
+use std::fmt;
 use std::time::{Instant, Duration};
 
-use chrono::{self, DateTime, Utc, TimeZone};
+use chrono::{self, DateTime, Utc};
 use pub_sub::PubSub;
-use zmq;
-use influent::measurement::{Measurement, Value};
 use sloggers::types::Severity;
-//use chashmap::CHashMap;
 
 use windows::{DurationWindow, Incremental, Window};
-use money::{Ticker, Side, ByExchange, Exchange};
+use money::{Ticker, Side, Exchange};
 
 use super::file_logger;
 use influx::{self, OwnedMeasurement, OwnedValue};
@@ -37,24 +32,22 @@ pub fn dt_nanos(t: DateTime<Utc>) -> i64 {
 pub fn now() -> i64 { dt_nanos(Utc::now()) }
 
 pub fn tfmt(ns: Nanos) -> String {
-    let mut f = String::new();
     match ns {
         t if t <= MICROSECOND => {
-            write!(f, "{}ns", t);
+            format!("{}ns", t)
         }
 
         t if t > MICROSECOND && t < MILLISECOND => {
-            write!(f, "{}u", t / MICROSECOND);  
+            format!("{}u", t / MICROSECOND)
         }
         t if t > MILLISECOND && t < SECOND => {
-            write!(f, "{}ms", t / MILLISECOND);  
+            format!("{}ms", t / MILLISECOND)
         }
 
         t => {
-            write!(f, "{}.{}sec", t / SECOND, t / MILLISECOND);
+            format!("{}.{}sec", t / SECOND, t / MILLISECOND)
         }
     }
-    f
 }
 
 pub fn tfmt_dur(d: Duration) -> String {
@@ -70,21 +63,22 @@ pub fn tfmt_dt(dt: DateTime<Utc>) -> String {
 }
 
 
-pub fn tfmt_write(ns: Nanos, f: &mut fmt::Formatter) {
+pub fn tfmt_write(ns: Nanos, f: &mut fmt::Formatter) -> fmt::Result {
     match ns {
         t if t <= MICROSECOND => {
-            write!(f, "{}ns", t);
+            write!(f, "{}ns", t)
         }
 
         t if t > MICROSECOND && t < MILLISECOND => {
-            write!(f, "{}u", t / MICROSECOND);  
+            write!(f, "{}u", t / MICROSECOND)
         }
+
         t if t > MILLISECOND && t < SECOND => {
-            write!(f, "{}ms", t / MILLISECOND);  
+            write!(f, "{}ms", t / MILLISECOND)
         }
 
         t => {
-            write!(f, "{}.{}sec", t / SECOND, t / MILLISECOND);
+            write!(f, "{}.{}sec", t / SECOND, t / MILLISECOND)
         }
     }
 }
@@ -101,68 +95,18 @@ pub enum Latency {
 pub enum ExperiencedLatency {
 
     GdaxWebsocket(Duration),
-
-    //GdaxWebsocketNoLock(Duration),
-
     GdaxHttpPublic(Duration),
-
     GdaxHttpPrivate(Duration),
-
     PlnxHttpPublic(Duration),
-
     PlnxHttpPrivate(Duration),
-
     PlnxOrderBook(Duration),
-
-    ExmoHttpPublic(Duration),
-
     KrknHttpPublic(Duration),
-
     KrknHttpPrivate(Duration),
-
     KrknTrade(Duration, &'static str, Option<Ticker>, Option<Side>),
-
-    EventLoop(Duration),
-
     PlnxWs(Ticker),
 
     Terminate
 }
-
-// impl Message for ExperiencedLatency {
-//     fn kill_switch() -> Self {
-//         ExperiencedLatency::Terminate
-//     }
-// }
-
-/// represents over what period of time
-/// the latency measurements were taken
-pub trait MeasurementWindow {
-    fn duration(&self) -> Duration;
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct WThirty;
-
-impl Default for WThirty {
-    fn default() -> Self { WThirty {} }
-}
-
-impl MeasurementWindow for WThirty {
-    fn duration(&self) -> Duration { Duration::from_secs(30) }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct WTen;
-
-impl Default for WTen {
-    fn default() -> Self { WTen {} }
-}
-
-impl MeasurementWindow for WTen {
-    fn duration(&self) -> Duration { Duration::from_secs(10) }
-}
-
 
 #[derive(Debug, Clone)]
 pub struct Update {
@@ -182,9 +126,7 @@ impl Default for Update {
 }
 
 #[derive(Debug, Clone)]
-pub struct LatencyUpdate<W> 
-    where W: MeasurementWindow
-{
+pub struct LatencyUpdate {
     pub gdax_ws: Nanos,
     pub krkn_pub: Nanos,
     pub krkn_priv: Nanos, 
@@ -201,80 +143,26 @@ pub struct LatencyUpdate<W>
     pub krkn_last: DateTime<Utc>,
 
     pub plnx_ws_count: u64,
-
-    //pub event_loop: Nanos,
-
-    pub size: W,
 }
 
-impl<W> Default for LatencyUpdate<W> 
-    where W: MeasurementWindow + Default
-{
+impl Default for LatencyUpdate {
     fn default() -> Self {
         LatencyUpdate {
-            gdax_ws: Nanos::default(),
-            krkn_pub: Nanos::default(),
-            krkn_priv: Nanos::default(), 
-            plnx_pub: Nanos::default(),
-            plnx_priv: Nanos::default(),
-            plnx_order: Nanos::default(),
-            krkn_trade_30_mean: Nanos::default(),
-            krkn_trade_30_max: Nanos::default(),
+            gdax_ws                 : 0,
+            krkn_pub                : 0,
+            krkn_priv               : 0, 
+            plnx_pub                : 0,
+            plnx_priv               : 0,
+            plnx_order              : 0,
+            krkn_trade_30_mean      : 0,
+            krkn_trade_30_max       : 0,
+            krkn_trade_300_mean     : 0,
+            krkn_trade_300_max      : 0,
+            plnx_ws_count           : 0,
 
-            krkn_trade_300_mean: Nanos::default(),
-            krkn_trade_300_max: Nanos::default(),
-
-            plnx_ws_count: 0,
-
-            plnx_last: Utc::now(),
-            krkn_last: Utc::now(),
-
-            size: W::default()
+            plnx_last               : Utc::now(),
+            krkn_last               : Utc::now(),
         }
-    }
-}
-
-impl<W> Display for LatencyUpdate<W> 
-    where W: MeasurementWindow
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, " gdax ws: ");
-        tfmt_write(self.gdax_ws, f);
-        write!(f, "\n krkn pub: ");
-        tfmt_write(self.krkn_pub, f);
-        write!(f, "\n krkn priv: ");
-        tfmt_write(self.krkn_priv, f);
-
-        write!(f, "\n krkn trade 30 mean: ");
-        tfmt_write(self.krkn_trade_30_mean, f);
-
-        write!(f, "\n krkn trade 30 max: ");
-        tfmt_write(self.krkn_trade_30_max, f);
-
-        write!(f, "\n krkn trade 300 mean: ");
-        tfmt_write(self.krkn_trade_300_mean, f);
-
-        write!(f, "\n krkn trade 300 max: ");
-        tfmt_write(self.krkn_trade_300_max, f);
-
-        write!(f, "\n plnx pub: ");
-        tfmt_write(self.plnx_pub, f);
-        write!(f, "\n plnx priv: ");
-        tfmt_write(self.plnx_priv, f);
-        write!(f, "\n plnx orderbook loop: ");
-        tfmt_write(self.plnx_order, f);
-
-        //write!(f, "\n gdax ws nolock: ");
-        //tfmt_write(self.gdax_ws_nolock, f);
-        //write!(f, "\n event loop: ");
-        //tfmt(self.event_loop, f);
-        write!(f,"")
-    }
-}
-
-impl<W: MeasurementWindow> LatencyUpdate<W> {
-    pub fn measurement_window(&self) -> Duration {
-        self.size.duration()
     }
 }
 
@@ -284,11 +172,9 @@ pub struct Manager {
         thread: Option<JoinHandle<()>>,
 }
 
-pub struct LatencyManager<W> 
-    where W: MeasurementWindow + Clone + Send + Sync
-{
+pub struct LatencyManager {
     pub tx: Sender<ExperiencedLatency>,
-    pub channel: PubSub<LatencyUpdate<W>>,
+    pub channel: PubSub<LatencyUpdate>,
         thread: Option<JoinHandle<()>>,
 }
 
@@ -323,7 +209,6 @@ impl Manager {
            measurements: Sender<OwnedMeasurement>) -> Self {
 
         let (tx, rx) = channel();
-        let tx_copy = tx.clone();
         let channel = PubSub::new();
         let channel_copy = channel.clone();
         let logger = file_logger(log_path, Severity::Info);
@@ -336,25 +221,22 @@ impl Manager {
         let mut last = Last::default();
 
         info!(logger, "entering loop");
-        let mut terminate = false;
 
         let thread = Some(thread::spawn(move || { 
             loop {
 
                 let loop_time = Instant::now();
 
-                rx.try_recv().map(|msg| {
+                if let Ok(msg) = rx.recv_timeout(Duration::from_millis(1)) {
                     debug!(logger, "rcvd {:?}", msg);
 
                     match msg {
-                        Latency::Ws(exch, ticker, dur) => {
-                            // shortcut
+                        Latency::Ws(_, _, dur) => {
                             gdax_ws.update(loop_time, dur);
                             last.gdax = loop_time;
                         }
 
-                        Latency::Trade(exch, ticker, dur) => {
-                            //shorcut
+                        Latency::Trade(_, ticker, dur) => {
                             gdax_trade.update(loop_time, dur);
                             last.gdax = loop_time;
                             let nanos = DurationWindow::nanos(dur);
@@ -362,17 +244,14 @@ impl Manager {
                                 OwnedMeasurement::new("gdax_trade_api")
                                     .add_tag("ticker", ticker.to_str())
                                     .add_field("nanos", OwnedValue::Integer(nanos as i64))
-                                    .set_timestamp(influx::now()));
+                                    .set_timestamp(influx::now())).unwrap();
                         }
 
-                        Latency::Terminate => {
-                            crit!(logger, "rcvd Terminate order");
-                            terminate = true;
-                        }
+                        Latency::Terminate => break,
 
                         _ => {}
                     }
-                });
+                }
 
                 if loop_time - last.broadcast > Duration::from_millis(100) {
                     debug!(logger, "initalizing broadcast");
@@ -382,17 +261,13 @@ impl Manager {
                         gdax_trade: gdax_trade.refresh(&loop_time).mean_nanos(),
                         gdax_last: dt_from_dur(loop_time - last.gdax)
                     };
-                    channel.send(update);
+                    channel.send(update).unwrap();
                     last.broadcast = loop_time;
                     debug!(logger, "sent broadcast");
-                } else {
-                    #[cfg(feature = "no-thrash")]
-                    thread::sleep(Duration::new(0, 1000));
-                }
+                } 
 
-                if terminate { break }
             }
-            crit!(logger, "goodbye");
+            debug!(logger, "latency manager terminating");
         }));
 
         Manager {
@@ -403,54 +278,55 @@ impl Manager {
     }
 }
 
-impl Drop for Manager {
+impl Drop for LatencyManager {
     fn drop(&mut self) {
-        self.tx.send(Latency::Terminate);
+        for _ in 0..100 { self.tx.send(ExperiencedLatency::Terminate).unwrap(); }
         if let Some(thread) = self.thread.take() {
             let _ = thread.join();
         }
     }
 }
 
+impl Drop for Manager {
+    fn drop(&mut self) {
+        for _ in 0..100 { self.tx.send(Latency::Terminate).unwrap(); }
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
 
-
-//impl<W: MeasurementWindow + Clone + Send + Sync> LatencyManager<W> {
-impl LatencyManager<WTen> {
-    pub fn new(w: WTen) -> Self {
+impl LatencyManager {
+    pub fn new(d: Duration) -> Self {
         let (tx, rx) = channel();
         let tx_copy = tx.clone();
         let channel = PubSub::new();
         let channel_copy = channel.clone();
-        let w = w.clone();
+        //let w = w.clone();
 
         let thread = Some(thread::spawn(move || { 
             let logger = file_logger("var/log/latency-manager.log", Severity::Info);
             info!(logger, "initializing zmq");
 
-            let ctx = zmq::Context::new();
-            let socket = influx::push(&ctx).unwrap();
-            let mut buf = String::with_capacity(4096);
             info!(logger, "initializing DurationWindows");
-            let mut gdax_ws = DurationWindow::new(w.duration());
-            let mut gdax_priv = DurationWindow::new(w.duration());
-            let mut krkn_pub = DurationWindow::new(w.duration());
-            let mut krkn_priv = DurationWindow::new(w.duration());
-            let mut plnx_pub = DurationWindow::new(w.duration());
-            let mut plnx_priv = DurationWindow::new(w.duration());
-            let mut plnx_order = DurationWindow::new(w.duration());
-            let mut plnx_ws_count: Window<u32> = Window::new(w.duration());
+            let mut gdax_ws = DurationWindow::new(d);
+            let mut gdax_priv = DurationWindow::new(d);
+            let mut krkn_pub = DurationWindow::new(d);
+            let mut krkn_priv = DurationWindow::new(d);
+            let mut plnx_pub = DurationWindow::new(d);
+            let mut plnx_priv = DurationWindow::new(d);
+            let mut plnx_order = DurationWindow::new(d);
+            let mut plnx_ws_count: Window<u32> = Window::new(d);
 
             // yes I am intentionally breaking from the hard-typed duration
             // window ... that was a stupid idea
             //
             let mut krkn_trade_30 = DurationWindow::new(Duration::from_secs(30));
             let mut krkn_trade_300 = DurationWindow::new(Duration::from_secs(300));
-            //let mut gdax_ws_nolock = DurationWindow::new(w.duration());
-            //let mut event_loop = DurationWindow::new(w.duration());
 
             let mut last = Last::default();
 
-            thread::sleep_ms(1);
+            thread::sleep(Duration::from_millis(1));
 
             info!(logger, "entering loop");
             loop {
@@ -466,7 +342,7 @@ impl LatencyManager<WTen> {
                         }
 
                         ExperiencedLatency::GdaxWebsocket(d) => gdax_ws.update(loop_time, d),
-                        //ExperiencedLatency::GdaxWebsocketNoLock(d) => gdax_ws_nolock.update(loop_time, d),
+
                         ExperiencedLatency::GdaxHttpPrivate(d) => gdax_priv.update(loop_time, d),
 
                         ExperiencedLatency::KrknHttpPublic(d) => {
@@ -499,30 +375,14 @@ impl LatencyManager<WTen> {
                             plnx_ws_count.update(loop_time, 1_u32);
                         }
 
-                        ExperiencedLatency::KrknTrade(d, cmd, ticker, side) => {
+                        ExperiencedLatency::KrknTrade(d, cmd, _, _) => {
                             debug!(logger, "new KrknTrade";
                                    "cmd" => cmd);
                             last.krkn = loop_time;
-                            let n = DurationWindow::nanos(d);
                             krkn_trade_30.update(loop_time, d);
                             krkn_trade_300.update(loop_time, d);
-                            // let ticker_s = ticker.map(|t| t.to_string()).unwrap_or("".into());
-                            // let side_s = side.map(|s| s.to_string()).unwrap_or("".into());
-                            // let mut m = Measurement::new("krkn_trade_api");
-                            // m.add_field("nanos", Value::Integer(n as i64));
-                            // m.add_tag("cmd", cmd);
-                            // if ticker.is_some() {
-                            //     m.add_tag("ticker", &ticker_s);
-                            // }
-                            // if side.is_some() {
-                            //     m.add_tag("side", &side_s);
-                            // }
-                            // m.set_timestamp(now());
-                            // influx::serialize(&m, &mut buf);
-                            // socket.send_str(&buf, 0);
-                            // buf.clear();
                         }
-                        //ExperiencedLatency::EventLoop(d) => event_loop.update(Instant::now(), d),
+
                         other => {
                             warn!(logger, "unexpected msg: {:?}", other);
                         }
@@ -539,7 +399,6 @@ impl LatencyManager<WTen> {
                     krkn_trade_300.refresh(&loop_time);
                     let update = LatencyUpdate {
                         gdax_ws: gdax_ws.refresh(&loop_time).mean_nanos(),
-                        //gdax_ws_nolock: gdax_ws_nolock.refresh(&loop_time).mean_nanos(),
                         krkn_pub: krkn_pub.refresh(&loop_time).mean_nanos(),
                         krkn_priv: krkn_priv.refresh(&loop_time).mean_nanos(),
                         plnx_pub: plnx_pub.refresh(&loop_time).mean_nanos(),
@@ -557,10 +416,8 @@ impl LatencyManager<WTen> {
 
                         plnx_ws_count: plnx_ws_count.refresh(&loop_time).count() as u64,
 
-                        //event_loop: event_loop.refresh(&now).mean_nanos(),
-                        size: w.clone(),
                     };
-                    channel.send(update);
+                    channel.send(update).unwrap();
                     last.broadcast = loop_time;
                     debug!(logger, "sent broadcast");
                 }
@@ -575,9 +432,3 @@ impl LatencyManager<WTen> {
         }
     }
 }
-
-
-
-
-
-

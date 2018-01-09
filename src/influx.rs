@@ -1,13 +1,12 @@
 //! Utilities to efficiently send data to influx
 //! 
 
-use std::iter::FromIterator;
-use std::io::{Write, Read};
-use std::sync::mpsc::{Sender, Receiver, channel, SendError};
+use std::io::Read;
+use std::sync::mpsc::{Sender, channel, SendError};
 use std::thread;
-use std::fs::{self, OpenOptions};
+use std::fs;
 use std::time::Duration;
-use std::hash::{Hash, BuildHasherDefault};
+use std::hash::BuildHasherDefault;
 
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
@@ -15,14 +14,13 @@ use hyper::Url;
 use hyper::client::Client;
 use influent::measurement::{Measurement, Value};
 use zmq;
-use chrono::{DateTime, Utc, TimeZone};
+#[allow(unused_imports)]
+use chrono::{DateTime, Utc};
 use sloggers::types::Severity;
 use ordermap::OrderMap;
 use fnv::FnvHasher;
 use decimal::d128;
 use uuid::Uuid;
-
-use money::Ticker;
 
 use super::{nanos, file_logger};
 use warnings::Warning;
@@ -211,6 +209,7 @@ impl InfluxWriter {
         self.tx.clone()
     }
 
+    #[allow(unused_assignments)]
     pub fn new(host: &'static str, db: &'static str, log_path: &str, buffer_size: u8) -> Self {
         let (kill_switch, terminate) = channel();
         let (tx, rx) = channel();
@@ -219,8 +218,12 @@ impl InfluxWriter {
             debug!(logger, "initializing url";
                   "DB_HOST" => host, 
                   "DB_NAME" => db);
+
+            #[cfg(not(test))]
             let url = Url::parse_with_params(&format!("http://{}:8086/write", host), &[("db", db), ("precision", "ns")]).expect("influx writer url should parse");
+            #[cfg(not(test))]
             let client = Client::new();
+
             debug!(logger, "initializing buffers");
             let mut meas_buf = String::with_capacity(32 * 32 * 32);
             let mut buf = String::with_capacity(32 * 32 * 32);
@@ -264,7 +267,7 @@ impl InfluxWriter {
 
                                 Ok(mut resp) =>  {
                                     let mut server_resp = String::with_capacity(1024);
-                                    resp.read_to_string(&mut server_resp); //.unwrap_or(0);
+                                    let _ = resp.read_to_string(&mut server_resp); //.unwrap_or(0);
                                     error!(logger, "influx server error";
                                            "status" => resp.status.to_string(),
                                            "body" => server_resp);
@@ -285,7 +288,7 @@ impl InfluxWriter {
 
             loop {
                 rcvd_msg = false;
-                rx.recv_timeout(Duration::from_millis(10))
+                let _ = rx.recv_timeout(Duration::from_millis(10))
                     .map(|mut meas: OwnedMeasurement| {
                         // if we didn't set the timestamp, it would end up
                         // being whenever we accumulated `BUFFER_SIZE` messages,
@@ -473,8 +476,6 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
         add_tag(line, key, value);
     }
 
-    let mut fields = measurement.fields.iter();
-
     let add_field = |line: &mut String, key: &str, value: &OwnedValue, is_first: bool| {
         if is_first { line.push_str(" "); } else { line.push_str(","); }
         line.push_str(&escape_tag(key));
@@ -543,7 +544,7 @@ pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
                                 Ok(Response { status, .. }) if status == StatusCode::NoContent => {}
 
                                 Ok(mut resp) =>  {
-                                    resp.read_to_string(&mut server_resp); //.unwrap_or(0);
+                                    let _ = resp.read_to_string(&mut server_resp); //.unwrap_or(0);
                                     let _ = warnings.send(
                                         Warning::Error(
                                             format!("Influx server: {}", server_resp)));
@@ -582,9 +583,6 @@ pub struct OwnedMeasurement {
     pub timestamp: Option<i64>,
     pub fields: Map<&'static str, OwnedValue>,
     pub tags: Map<&'static str, &'static str>,
-    //pub n_tags: usize,
-    //pub n_fields: usize,
-    //pub string_tags: HashMap<&'static str, String>
 }
 
 impl OwnedMeasurement {
@@ -594,9 +592,6 @@ impl OwnedMeasurement {
             timestamp: None,
             tags: new_map(n_tags),
             fields: new_map(n_fields),
-            //n_tags,
-            //n_fields,
-            //string_tags: HashMap::new()
         }
     }
 
@@ -608,11 +603,6 @@ impl OwnedMeasurement {
         self.tags.insert(key, value);
         self
     }
-
-    // pub fn add_string_tag(mut self, key: &'static str, value: String) -> Self {
-    //     self.string_tags.insert(key, value);
-    //     self
-    // }
 
     pub fn add_field(mut self, key: &'static str, value: OwnedValue) -> Self {
         self.fields.insert(key, value);
@@ -630,6 +620,7 @@ impl OwnedMeasurement {
     }
 }
 
+#[allow(unused_imports, unused_variables)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -735,7 +726,7 @@ mod tests {
             int [ seven => { 1 + 2 } ],
             time [ 1 ]
         );
-        thread::sleep_ms(10);
+        thread::sleep(Duration::from_millis(10));
         let meas: OwnedMeasurement = rx.try_recv().unwrap();
         assert_eq!(meas.key, "test_measurement");
         assert_eq!(meas.tags.get("one"), Some(&"a"));
@@ -759,7 +750,7 @@ mod tests {
             time[t]
         );
 
-        thread::sleep_ms(10);
+        thread::sleep(Duration::from_millis(10));
         let meas: OwnedMeasurement = rx.try_recv().unwrap();
         assert_eq!(meas.key, "test_measurement");
         assert_eq!(meas.tags.get("one"), Some(&"a"));
@@ -783,7 +774,7 @@ mod tests {
             time[1]
         );
 
-        thread::sleep_ms(10);
+        thread::sleep(Duration::from_millis(10));
         let meas: OwnedMeasurement = rx.try_recv().unwrap();
         assert_eq!(meas.key, "test_measurement");
         assert_eq!(meas.tags.get("one"), Some(&"a"));
@@ -872,7 +863,7 @@ mod tests {
         let now = now();
         meas.set_timestamp(now);
         serialize(&meas, &mut buf);
-        socket.send_str(&buf, 0);
+        socket.send_str(&buf, 0).unwrap();
         drop(w);
     }
 
@@ -914,7 +905,7 @@ mod tests {
             Ok(Response { status, .. }) if status == StatusCode::NoContent => {}
 
             Ok(mut resp) =>  {
-                resp.read_to_string(&mut server_resp); //.unwrap_or(0);
+                resp.read_to_string(&mut server_resp).unwrap();
                 panic!("{}", server_resp);
             }
 
@@ -968,7 +959,7 @@ mod tests {
         let raw = r#"error encountered trying to send krkn order: Other("Failed to send http request: Other("Resource temporarily unavailable (os error 11)")")"#;
         let mut buf = String::new();
         let mut server_resp = String::new();
-        let mut m = OwnedMeasurement::new("rust_test")
+        let m = OwnedMeasurement::new("rust_test")
             .add_field("s", OwnedValue::String(raw.to_string()))
             .set_timestamp(now());
         serialize_owned(&m, &mut buf);
@@ -987,7 +978,7 @@ mod tests {
             Ok(Response { status, .. }) if status == StatusCode::NoContent => {}
 
             Ok(mut resp) =>  {
-                resp.read_to_string(&mut server_resp); //.unwrap_or(0);
+                resp.read_to_string(&mut server_resp).unwrap();
                 panic!("{}", server_resp);
             }
 

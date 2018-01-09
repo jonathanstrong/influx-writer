@@ -3,14 +3,14 @@
 
 use std::thread::{self, JoinHandle};
 use std::sync::{Arc, Mutex, RwLock};
-use std::sync::mpsc::{self, Sender, Receiver, channel};
+use std::sync::mpsc::{Sender, channel};
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::{self, Display, Error as FmtError, Formatter};
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use std::fs;
 
 use zmq;
-use chrono::{DateTime, Utc, TimeZone};
+use chrono::{DateTime, Utc};
 use termion::color::{self, Fg, Bg};
 use influent::measurement::{Measurement, Value as InfluentValue};
 use slog::{self, OwnedKVList, Drain, Key, KV, Level, Logger};
@@ -188,16 +188,10 @@ impl Warning {
 
 impl Display for Warning {
     fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError> {
-        self.category(f);
+        self.category(f)?;
         write!(f, " {}", self.msg())
     }
 }
-
-// impl Message for Warning {
-//     fn kill_switch() -> Self {
-//         Warning::Terminate
-//     }
-// }
 
 #[derive(Debug, Clone)]
 pub struct Record {
@@ -252,7 +246,6 @@ impl Value {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MeasurementRecord {
     fields: Vec<(Key, Value)>,
-    //measurement: &'a mut Measurement<'a>,
     tags: Vec<(Key, String)>,
 }
 
@@ -276,7 +269,7 @@ impl MeasurementRecord {
             }
 
             other => {
-                self.add_field(key, Value::String(val));
+                self.add_field(other, Value::String(val)).unwrap();
             }
         }
 
@@ -285,7 +278,7 @@ impl MeasurementRecord {
 
     pub fn serialize_values(&mut self, record: &slog::Record, values: &OwnedKVList) {
         let mut builder = TagBuilder { mrec: self };
-        values.serialize(record, &mut builder);
+        let _ = values.serialize(record, &mut builder);
     }
 
     pub fn to_measurement<'a>(&'a self, name: &'a str) -> Measurement<'a> {
@@ -313,7 +306,7 @@ impl MeasurementRecord {
 impl slog::Serializer for MeasurementRecord {
     fn emit_usize(&mut self, key: Key, val: usize) -> SlogResult { self.add_field(key, Value::Integer(val as i64)) }
     fn emit_isize(&mut self, key: Key, val: isize) -> SlogResult { self.add_field(key, Value::Integer(val as i64)) }
-    fn emit_bool(&mut self, key: Key, val: bool)   -> SlogResult { self.add_field(key, Value::Boolean(val)); Ok(()) }
+    fn emit_bool(&mut self, key: Key, val: bool)   -> SlogResult { self.add_field(key, Value::Boolean(val)) }
     fn emit_u8(&mut self, key: Key, val: u8)       -> SlogResult { self.add_field(key, Value::Integer(val as i64)) }
     fn emit_i8(&mut self, key: Key, val: i8)       -> SlogResult { self.add_field(key, Value::Integer(val as i64)) }
     fn emit_u16(&mut self, key: Key, val: u16)     -> SlogResult { self.add_field(key, Value::Integer(val as i64)) } 
@@ -326,7 +319,7 @@ impl slog::Serializer for MeasurementRecord {
     fn emit_f64(&mut self, key: Key, val: f64)     -> SlogResult { self.add_field(key, Value::Float(val)) }
     fn emit_str(&mut self, key: Key, val: &str)    -> SlogResult { self.add_field(key, Value::String(val.to_string())) }
     fn emit_unit(&mut self, key: Key)              -> SlogResult { self.add_field(key, Value::Boolean(true)) }
-    fn emit_none(&mut self, key: Key)              -> SlogResult { Ok(()) } //self.add_field(key, Value::String("none".into())) }
+    fn emit_none(&mut self, _: Key)                -> SlogResult { Ok(()) } //self.add_field(key, Value::String("none".into())) }
     fn emit_arguments(&mut self, key: Key, val: &fmt::Arguments) -> SlogResult { self.add_field(key, Value::String(val.to_string())) } 
 }
 
@@ -342,7 +335,7 @@ impl<'a> slog::Serializer for TagBuilder<'a> {
             }
 
             other => {
-                self.mrec.add_field(key, Value::String(val.to_string()))
+                self.mrec.add_field(other, Value::String(val.to_string()))
             }
         }
     }
@@ -354,7 +347,7 @@ impl<'a> slog::Serializer for TagBuilder<'a> {
             }
 
             other => {
-                self.mrec.add_field(key, Value::String(val.to_string()))
+                self.mrec.add_field(other, Value::String(val.to_string()))
             }
         }
 
@@ -392,7 +385,7 @@ impl<D: Drain> Drain for WarningsDrain<D> {
         if record.level() <= self.level {
             let mut ser = MeasurementRecord::new();
             ser.serialize_values(record, values);
-            record.kv().serialize(record, &mut ser);
+            let _ = record.kv().serialize(record, &mut ser);
             let msg = record.msg().to_string();
             if let Ok(lock) = self.tx.lock() {
                 let _ = lock.send(Warning::Log { 
@@ -412,7 +405,6 @@ impl<D: Drain> Drain for WarningsDrain<D> {
         Ok(())
     }
 }
-
 
 #[derive(Debug)]
 pub struct WarningsManager {
@@ -440,11 +432,11 @@ impl WarningsManager {
                 if let Ok(msg) = rx.recv() {
                     match msg {
                         Warning::Terminate => {
-                            crit!(logger, "terminating");
+                            debug!(logger, "terminating");
                             break;
                         }
 
-                        Warning::Log { level, module, function, line, msg, kv } => {
+                        Warning::Log { level, msg, kv, .. } => {
                             debug!(logger, "new Warning::Debug arrived";
                                    "msg" => &msg);
                             let mut meas = kv.to_measurement(measurement_name);
@@ -489,11 +481,12 @@ impl Drop for WarningsManager {
     fn drop(&mut self) {
         let _ = self.tx.send(Warning::Terminate);
         if let Some(thread) = self.thread.take() {
-            thread.join();
+            thread.join().unwrap();
         }
     }
 }
 
+#[allow(dead_code)]
 pub struct ZmqDrain<D>
     where D: Drain,
 {
@@ -533,24 +526,25 @@ impl<D> Drain for ZmqDrain<D>
     fn log(&self, record: &slog::Record, values: &OwnedKVList) -> Result<Self::Ok, Self::Err> {
         {
             let mut buf = self.buf.lock().unwrap();
-            write!(buf, "{time} {level}", 
+            let _ = write!(buf, "{time} {level}", 
                 time = Utc::now().format(TIMESTAMP_FORMAT),
                 level = record.level().as_short_str());
             {
                 let mut thread_ser = ThreadSer(&mut buf);
-                record.kv().serialize(record, &mut thread_ser);
-                values.serialize(record, &mut thread_ser);
+                let _ = record.kv().serialize(record, &mut thread_ser);
+                let _ = values.serialize(record, &mut thread_ser);
             }
 
-            write!(buf, " {file:<20} {line:<5} {msg}",
-                   file = record.file(),
-                   line = record.line(),
-                   msg = record.msg());
+            let _ = write!(buf, " {file:<20} {line:<5} {msg}",
+                           file = record.file(),
+                           line = record.line(),
+                           msg = record.msg());
                 
             {
                 let mut kv_ser = KvSer(&mut buf);
-                record.kv().serialize(record, &mut kv_ser);
-                values.serialize(record, &mut kv_ser);
+                // discarding any errors here...
+                let _ = record.kv().serialize(record, &mut kv_ser);
+                let _ = values.serialize(record, &mut kv_ser);
             }
 
             let _ = self.socket.send(&buf, 0);
@@ -563,6 +557,7 @@ impl<D> Drain for ZmqDrain<D>
 /// Can be used as a `Write` with `slog_term` and
 /// other libraries. 
 ///
+#[allow(dead_code)]
 pub struct ZmqIo {
     ctx: zmq::Context,
     socket: zmq::Socket,
@@ -611,13 +606,13 @@ impl Write for ZmqIo {
 struct ThreadSer<'a>(&'a mut Vec<u8>);
 
 impl<'a> slog::ser::Serializer for ThreadSer<'a> {
-    fn emit_arguments(&mut self, key: &str, val: &fmt::Arguments) -> slog::Result {
+    fn emit_arguments(&mut self, _: &str, _: &fmt::Arguments) -> slog::Result {
         Ok(())
     }
 
     fn emit_str(&mut self, key: &str, val: &str) -> slog::Result {
         if key == "thread" {
-            write!(self.0, " {:<20}", val);
+            write!(self.0, " {:<20}", val)?;
         }
         Ok(())
     }
@@ -717,6 +712,7 @@ impl<'a> slog::ser::Serializer for KvSer<'a> {
     }
 }
 
+#[allow(unused_variables, unused_imports)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -735,9 +731,6 @@ mod tests {
                 level: Level::Trace,
             };
         let logger = slog::Logger::root(drain, o!());
-        //for _ in 0..60 {
-        //    debug!(logger, "test 123"; "exchange" => "plnx");
-        //}
     }
 
     #[bench]
@@ -765,6 +758,5 @@ mod tests {
         let _ = tx.lock().unwrap().send(Msg::Terminate);
         let len = worker.join().unwrap();
         //println!("{}", len);
-
     }
 }
