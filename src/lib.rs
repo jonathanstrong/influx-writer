@@ -28,7 +28,8 @@ use chrono::{DateTime, Utc};
 #[allow(unused_imports)]
 use sloggers::Build;
 #[allow(unused_imports)]
-use sloggers::types::{Severity, TimeZone};
+pub use sloggers::types::Severity;
+use sloggers::types::TimeZone;
 #[allow(unused_imports)]
 use sloggers::file::FileLoggerBuilder;
 
