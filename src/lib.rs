@@ -20,6 +20,7 @@ extern crate fnv;
 extern crate ordermap;
 extern crate decimal;
 extern crate uuid;
+extern crate hdrsample;
 
 extern crate windows;
 extern crate pubsub as pub_sub;
@@ -36,6 +37,7 @@ use sloggers::file::FileLoggerBuilder;
 pub mod influx;
 pub mod warnings;
 pub mod latency;
+pub mod hist;
 
 /// converts a chrono::DateTime to an integer timestamp (ns)
 ///
