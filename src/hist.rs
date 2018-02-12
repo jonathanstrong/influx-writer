@@ -103,7 +103,7 @@ impl HistLog {
         let path = dir.join(&format!("{}-interval-log-{}.v2z", series, seconds));
         let file = fs::File::create(&path).unwrap();
         thread::Builder::new().name(format!("HistLog::scribe::{}", series)).spawn(move || {
-            let mut buf = io::BufWriter::new(file);
+            let mut buf = io::LineWriter::new(file);
             let mut wtr =
                 IntervalLogWriterBuilder::new() 
                     .with_base_time(UNIX_EPOCH)
