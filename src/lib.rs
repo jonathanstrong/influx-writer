@@ -16,6 +16,7 @@ extern crate hyper;
 extern crate termion;
 extern crate sloggers;
 extern crate slog_term;
+extern crate slog_async;
 extern crate fnv;
 extern crate ordermap;
 extern crate decimal;
@@ -33,6 +34,7 @@ pub use sloggers::types::Severity;
 use sloggers::types::TimeZone;
 #[allow(unused_imports)]
 use sloggers::file::FileLoggerBuilder;
+use slog::Drain;
 
 pub mod influx;
 pub mod warnings;
@@ -57,6 +59,15 @@ pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
 pub fn file_logger(_: &str, _: Severity) -> slog::Logger {
     use slog::*;
     Logger::root(Discard, o!())
+}
+
+pub fn async_file_logger(path: &str, level: Severity) -> slog::Logger {
+    let drain = file_logger(path, level);
+    let async_drain =
+        slog_async::Async::new(drain)
+            .chan_size(100_000)
+            .build();
+    slog::Logger::root(async_drain.fuse(), o!())
 }
 
 pub fn dt_nanos(t: DateTime<Utc>) -> i64 {

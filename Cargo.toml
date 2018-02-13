@@ -18,6 +18,7 @@ ordermap = "0.3"
 fnv = "1"
 uuid = { version = "0.5", features = ["serde", "v4"] }
 hdrsample = "6"
+slog-async = "2"
 
 decimal = { path = "../decimal", version = "2" }
 
