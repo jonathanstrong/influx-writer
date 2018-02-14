@@ -29,4 +29,5 @@ pubsub = { path = "../pubsub" }
 [features]
 no-thrash = []
 trace = []
+debug = []
 test = []

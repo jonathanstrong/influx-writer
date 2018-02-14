@@ -41,13 +41,20 @@ pub mod warnings;
 pub mod latency;
 pub mod hist;
 
+#[cfg(feature = "trace")]
+pub const LOG_LEVEL                 : Severity          = Severity::Trace;
+#[cfg(all(feature = "debug", not(feature = "trace")))]
+pub const LOG_LEVEL                 : Severity          = Severity::Debug;
+#[cfg(not(any(feature = "debug", feature = "trace")))]
+pub const LOG_LEVEL                 : Severity          = Severity::Info;
+
 /// converts a chrono::DateTime to an integer timestamp (ns)
 ///
 pub fn nanos(t: DateTime<Utc>) -> u64 {
     (t.timestamp() as u64) * 1_000_000_000_u64 + (t.timestamp_subsec_nanos() as u64)
 }
 
-#[cfg(not(any(test, feature = "test")))]
+//#[cfg(not(any(test, feature = "test")))]
 pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
     let mut builder = FileLoggerBuilder::new(path);
     builder.level(level);
@@ -55,11 +62,11 @@ pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
     builder.build().unwrap()
 }
 
-#[cfg(any(test, feature = "test"))]
-pub fn file_logger(_: &str, _: Severity) -> slog::Logger {
-    use slog::*;
-    Logger::root(Discard, o!())
-}
+// #[cfg(any(test, feature = "test"))]
+// pub fn file_logger(_: &str, _: Severity) -> slog::Logger {
+//     use slog::*;
+//     Logger::root(Discard, o!())
+// }
 
 pub fn async_file_logger(path: &str, level: Severity) -> slog::Logger {
     let drain = file_logger(path, level);
