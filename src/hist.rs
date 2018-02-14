@@ -142,7 +142,6 @@ impl Drop for HistLog {
             //println!("in Drop, strong count is {}", Arc::strong_count(&arc));
             if let Ok(thread) = Arc::try_unwrap(arc) {
                 let _ = self.tx.send(None);
-                thread::sleep(Duration::from_millis(2));
                 let _ = thread.join();
             }
         }
