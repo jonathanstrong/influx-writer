@@ -27,14 +27,25 @@ use super::{nanos, file_logger, LOG_LEVEL};
 use warnings::Warning;
 
 const WRITER_ADDR: &'static str = "ipc:///tmp/mm/influx";
-//const WRITER_ADDR: &'static str = "tcp://127.0.0.1:17853";
-const DB_NAME: &'static str = "mm";
-const DB_HOST: &'static str = "http://washington.0ptimus.internal:8086/write";
-//const DB_HOST: &'static str = "http://harrison.0ptimus.internal:8086/write";
 const ZMQ_RCV_HWM: i32 = 0; 
 const ZMQ_SND_HWM: i32 = 0; 
 
 const BUFFER_SIZE: u16 = 80;
+
+#[cfg(not(any(test, feature = "test")))]
+const DB_NAME: &'static str = "mm2";
+
+#[cfg(any(test, feature = "test"))]
+const DB_NAME: &'static str = "mm2_test";
+
+#[cfg(all(not(feature = "harrison"), any(test, feature = "test", feature = "localhost")))]
+const DB_HOST: &'static str = "http://127.0.0.1:8086/write";
+
+#[cfg(feature = "harrison")]
+const DB_HOST: &'static str = "http://harrison.0ptimus.internal:8086/write";
+
+#[cfg(not(any(feature = "harrison", feature = "localhost", test, feature = "test")))]
+const DB_HOST: &'static str = "http://washington.0ptimus.internal:8086/write";
 
 pub use super::{dur_nanos, dt_nanos};
 
@@ -303,7 +314,7 @@ impl InfluxWriter {
 
                     _ => { 
                         #[cfg(feature = "no-thrash")]
-                        thread::sleep(Duration::new(0, 0)) 
+                        thread::sleep(Duration::new(0, 1)) 
                     }
                 }
             }
@@ -495,9 +506,9 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
     }
 }
 
-
+#[deprecated(since="0.4", note="Replace with InfluxWriter")]
 pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
+    thread::Builder::new().name("mm:inflx-wtr".into()).spawn(move || {
         let _ = fs::create_dir("/tmp/mm");
         let ctx = zmq::Context::new();
         let socket = pull(&ctx).expect("influx::writer failed to create pull socket");
@@ -549,7 +560,7 @@ pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
                 }
             }
         }
-    })
+    }).unwrap()
 }
 
 #[derive(Debug, Clone, PartialEq)]
