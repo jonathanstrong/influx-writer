@@ -112,7 +112,7 @@ impl HistLog {
                     .unwrap();
 
             loop {
-                match rx.try_recv() { //.recv_timeout(Duration::from_millis(1)) {
+                match rx.recv() { //.recv_timeout(Duration::from_millis(1)) {
                 //match rx.recv_timeout(Duration::new(1, 0)) {
                     Ok(Some(Entry { tag, start, end, hist })) => {
                         wtr.write_histogram(&hist, start.duration_since(UNIX_EPOCH).unwrap(),
