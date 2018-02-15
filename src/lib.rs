@@ -21,7 +21,7 @@ extern crate fnv;
 extern crate ordermap;
 extern crate decimal;
 extern crate uuid;
-extern crate hdrsample;
+extern crate hdrhistogram;
 
 extern crate windows;
 extern crate pubsub as pub_sub;

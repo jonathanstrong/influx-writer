@@ -297,7 +297,8 @@ impl InfluxWriter {
             };
 
             loop {
-                match rx.try_recv() {
+                //match rx.try_recv() {
+                match rx.recv() {
                     Ok(Some(mut meas)) => {
                         if meas.timestamp.is_none() {
                             meas.timestamp = Some(now());
@@ -308,13 +309,16 @@ impl InfluxWriter {
                     }
 
                     Ok(None) => {
-                        if buf.len() > 0 { send(&buf) }
+                        if buf.len() > 0 { 
+                            debug!(logger, "sending buffer to influx"; "len" => count);
+                            send(&buf) 
+                        }
                         break
                     }
 
                     _ => { 
-                        #[cfg(feature = "no-thrash")]
-                        thread::sleep(Duration::new(0, 1)) 
+                        //#[cfg(feature = "no-thrash")]
+                        thread::sleep(Duration::new(0, 1))
                     }
                 }
             }

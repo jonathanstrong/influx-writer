@@ -7,9 +7,9 @@ use std::io::{self, Write};
 use std::{mem, fs, env};
 
 use chrono::{DateTime, Utc, TimeZone};
-use hdrsample::{Histogram, Counter};
-use hdrsample::serialization::{Serializer, V2DeflateSerializer, V2Serializer};
-use hdrsample::serialization::interval_log::{IntervalLogWriterBuilder, Tag};
+use hdrhistogram::{Histogram, Counter};
+use hdrhistogram::serialization::{Serializer, V2DeflateSerializer, V2Serializer};
+use hdrhistogram::serialization::interval_log::{IntervalLogWriterBuilder, Tag};
 
 type C = u64;
 
@@ -61,6 +61,12 @@ impl HistLog {
         }
     }
 
+    pub fn clone_with_tag_and_freq(&self, tag: &'static str, freq: Duration) -> HistLog {
+        let mut clone = self.clone_with_tag(tag);
+        clone.freq = freq;
+        clone
+    }
+
     pub fn record(&mut self, value: u64) {
         let _ = self.hist.record(value);
     }
@@ -88,6 +94,7 @@ impl HistLog {
     pub fn check_send(&mut self, loop_time: Instant) {
         //let since = loop_time - self.last_sent;
         if loop_time > self.last_sent && loop_time - self.last_sent >= self.freq {
+            // send sets self.last_sent to loop_time fyi
             self.send(loop_time);
         }
     }
