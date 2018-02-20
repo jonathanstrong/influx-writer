@@ -38,14 +38,17 @@ const DB_NAME: &'static str = "mm2";
 #[cfg(any(test, feature = "test"))]
 const DB_NAME: &'static str = "mm2_test";
 
-#[cfg(all(not(feature = "harrison"), any(test, feature = "test", feature = "localhost")))]
+#[cfg(not(any(feature = "harrison", feature = "washington", feature = "scholes")))]
 const DB_HOST: &'static str = "http://127.0.0.1:8086/write";
 
 #[cfg(feature = "harrison")]
 const DB_HOST: &'static str = "http://harrison.0ptimus.internal:8086/write";
 
-#[cfg(not(any(feature = "harrison", feature = "localhost", test, feature = "test")))]
+#[cfg(feature = "washington")]
 const DB_HOST: &'static str = "http://washington.0ptimus.internal:8086/write";
+
+#[cfg(feature = "scholes")]
+const DB_HOST: &'static str = "http://159.203.81.249:8086/write";
 
 pub use super::{dur_nanos, dt_nanos};
 
