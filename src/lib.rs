@@ -48,6 +48,8 @@ pub const LOG_LEVEL                 : Severity          = Severity::Debug;
 #[cfg(not(any(feature = "debug", feature = "trace")))]
 pub const LOG_LEVEL                 : Severity          = Severity::Info;
 
+const CHANNEL_SIZE: usize = 40_000;
+
 /// converts a chrono::DateTime to an integer timestamp (ns)
 ///
 pub fn nanos(t: DateTime<Utc>) -> u64 {
@@ -59,6 +61,7 @@ pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
     let mut builder = FileLoggerBuilder::new(path);
     builder.level(level);
     builder.timezone(TimeZone::Utc);
+    builder.channel_size(CHANNEL_SIZE);
     builder.build().unwrap()
 }
 
@@ -67,6 +70,7 @@ pub fn truncating_file_logger(path: &str, level: Severity) -> slog::Logger {
     builder.level(level);
     builder.timezone(TimeZone::Utc);
     builder.truncate();
+    builder.channel_size(CHANNEL_SIZE);
     builder.build().unwrap()
 }
 

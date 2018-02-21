@@ -60,7 +60,7 @@ macro_rules! notice {
 }
 
 #[macro_export]
-macro_rules! error {
+macro_rules! error_w {
     ($warnings:ident, $($args:tt)*) => (
         {
             $warnings.send(Warning::Error( ( format!($($args)*) ) ) ).unwrap();
