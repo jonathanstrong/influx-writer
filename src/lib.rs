@@ -62,12 +62,22 @@ pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
     builder.build().unwrap()
 }
 
+pub fn truncating_file_logger(path: &str, level: Severity) -> slog::Logger {
+    let mut builder = FileLoggerBuilder::new(path);
+    builder.level(level);
+    builder.timezone(TimeZone::Utc);
+    builder.truncate();
+    builder.build().unwrap()
+}
+
 // #[cfg(any(test, feature = "test"))]
 // pub fn file_logger(_: &str, _: Severity) -> slog::Logger {
 //     use slog::*;
 //     Logger::root(Discard, o!())
 // }
 
+#[deprecated(since="0.4.0", note="Turns out the file logger in sloggers uses async, \
+                                  making the async here duplicative")]
 pub fn async_file_logger(path: &str, level: Severity) -> slog::Logger {
     let drain = file_logger(path, level);
     let async_drain =

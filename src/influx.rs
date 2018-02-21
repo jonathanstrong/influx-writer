@@ -234,7 +234,10 @@ impl InfluxWriter {
     pub fn new(host: &'static str, db: &'static str, log_path: &str, buffer_size: u16) -> Self {
         let (tx, rx): (Sender<Option<OwnedMeasurement>>, Receiver<Option<OwnedMeasurement>>) = channel();
         let logger = file_logger(log_path, LOG_LEVEL); // this needs to be outside the thread
-        let buffer_size = if cfg!(feature = "trace") { 0u16 } else { buffer_size };
+
+        #[cfg(feature = "no-influx-buffer")]
+        let buffer_size = 0u16;
+
         let thread = thread::Builder::new().name(format!("mm:inflx:{}", db)).spawn(move || {
             debug!(logger, "initializing url";
                   "DB_HOST" => host, 

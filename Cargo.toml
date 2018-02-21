@@ -11,7 +11,7 @@ hyper = "0.10"
 termion = "1.4.0"
 # pub-sub = "2.0"
 slog = "2.0.6"
-sloggers = "0.2"
+# sloggers = "0.2"
 slog-term = "2"
 # chashmap = "2"
 ordermap = "0.3"
@@ -19,6 +19,8 @@ fnv = "1"
 uuid = { version = "0.5", features = ["serde", "v4"] }
 hdrhistogram = "6"
 slog-async = "2"
+
+sloggers = { path = "../sloggers" }
 
 decimal = { path = "../decimal", version = "2" }
 
@@ -35,3 +37,4 @@ localhost = []
 harrison = []
 washington = []
 scholes = []
+no-influx-buffer = []
