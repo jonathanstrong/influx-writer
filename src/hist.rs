@@ -34,6 +34,21 @@ pub struct Entry {
     pub hist: Histogram<C>,
 }
 
+impl Clone for HistLog {
+    fn clone(&self) -> Self {
+        let thread = self.thread.as_ref().map(|x| Arc::clone(x));
+        Self {
+            series: self.series.clone(),
+            tag: self.tag.clone(),
+            freq: self.freq.clone(),
+            last_sent: Instant::now(),
+            tx: self.tx.clone(),
+            hist: self.hist.clone(),
+            thread,
+        }
+    }
+}
+
 impl HistLog {
     pub fn new(series: &'static str, tag: &'static str, freq: Duration) -> Self {
         let (tx, rx) = channel();
