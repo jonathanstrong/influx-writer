@@ -61,7 +61,11 @@ impl HistLog {
         Self { series, tag, freq, last_sent, tx, hist, thread }
     }
 
-    pub fn clone_with_tag(&self, tag: &'static str) -> HistLog {
+    pub fn new_with_tag(&self, tag: &'static str) -> Self {
+        Self::new(self.series, tag, self.freq)
+    }
+
+    pub fn clone_with_tag(&self, tag: &'static str) -> Self {
         let thread = self.thread.as_ref().map(|x| Arc::clone(x)).unwrap();
         assert!(self.thread.is_some(), "self.thread is {:?}", self.thread);
         let tx = self.tx.clone();
