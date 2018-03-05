@@ -38,14 +38,8 @@ const DB_NAME: &'static str = "mm2";
 #[cfg(any(test, feature = "test"))]
 const DB_NAME: &'static str = "mm2_test";
 
-#[cfg(not(any(feature = "harrison", feature = "washington", feature = "scholes")))]
+#[cfg(not(any(feature = "scholes")))]
 const DB_HOST: &'static str = "http://127.0.0.1:8086/write";
-
-#[cfg(feature = "harrison")]
-const DB_HOST: &'static str = "http://harrison.0ptimus.internal:8086/write";
-
-#[cfg(feature = "washington")]
-const DB_HOST: &'static str = "http://washington.0ptimus.internal:8086/write";
 
 #[cfg(feature = "scholes")]
 const DB_HOST: &'static str = "http://159.203.81.249:8086/write";
@@ -198,10 +192,8 @@ impl Default for InfluxWriter {
     fn default() -> Self {
         if cfg!(any(test, feature = "test")) {
             InfluxWriter::new("localhost", "test", "/home/jstrong/src/logging/var/log/influx-test.log", 1)
-        } else if cfg!(feature = "localhost") {
-            InfluxWriter::new("localhost", "mm2", "/home/jstrong/src/logging/var/log/influx-default.log", BUFFER_SIZE)
         } else {
-            InfluxWriter::new("washington.0ptimus.internal", "mm2", "var/influx-default.log", BUFFER_SIZE)
+            InfluxWriter::new("localhost", "mm2", "/home/jstrong/src/logging/var/log/influx-default.log", BUFFER_SIZE)
         }
     }
 }
