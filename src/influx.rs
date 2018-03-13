@@ -300,7 +300,7 @@ impl InfluxWriter {
 
                         if meas.timestamp.is_none() { meas.timestamp = Some(now()) }
 
-                        #[cfg(feature = "trace")] { if count % 10 == 0 { trace!(logger, "rcvd new measurement"; "count" => count, "key" => meas.key); } }
+                        //#[cfg(feature = "trace")] { if count % 10 == 0 { trace!(logger, "rcvd new measurement"; "count" => count, "key" => meas.key); } }
 
                         count = next(count, &meas, &mut buf);
                     }
