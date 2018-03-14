@@ -37,6 +37,7 @@ use sloggers::file::FileLoggerBuilder;
 use slog::Drain;
 
 pub mod influx;
+#[cfg(feature = "warnings")]
 pub mod warnings;
 pub mod latency;
 pub mod hist;
@@ -73,12 +74,6 @@ pub fn truncating_file_logger(path: &str, level: Severity) -> slog::Logger {
     builder.channel_size(CHANNEL_SIZE);
     builder.build().unwrap()
 }
-
-// #[cfg(any(test, feature = "test"))]
-// pub fn file_logger(_: &str, _: Severity) -> slog::Logger {
-//     use slog::*;
-//     Logger::root(Discard, o!())
-// }
 
 #[deprecated(since="0.4.0", note="Turns out the file logger in sloggers uses async, \
                                   making the async here duplicative")]

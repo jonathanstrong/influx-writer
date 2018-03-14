@@ -1,7 +1,16 @@
 [package]
 name = "logging"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Jonathan Strong <jstrong@legis.io>"]
+
+[[example]]
+name = "zmq-logger"
+path = "examples/zmq-logger.rs"
+required-features = ["warnings"]
+
+[[example]]
+name = "hist-interval"
+path = "examples/hist-interval.rs"
 
 [dependencies]
 zmq = "0.8"
@@ -9,11 +18,8 @@ influent = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 hyper = "0.10"
 termion = "1.4.0"
-# pub-sub = "2.0"
 slog = "2.0.6"
-# sloggers = "0.2"
 slog-term = "2"
-# chashmap = "2"
 ordermap = "0.3"
 fnv = "1"
 uuid = { version = "0.5", features = ["serde", "v4"] }
@@ -39,3 +45,4 @@ washington = []
 scholes = []
 no-influx-buffer = []
 disable-short-uuid = []
+warnings = []

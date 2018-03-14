@@ -24,6 +24,7 @@ use decimal::d128;
 use uuid::Uuid;
 
 use super::{nanos, file_logger, LOG_LEVEL};
+#[cfg(feature = "warnings")]
 use warnings::Warning;
 
 const WRITER_ADDR: &'static str = "ipc:///tmp/mm/influx";
@@ -511,6 +512,7 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
     }
 }
 
+#[cfg(feature = "warnings")]
 #[deprecated(since="0.4", note="Replace with InfluxWriter")]
 pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
     thread::Builder::new().name("mm:inflx-wtr".into()).spawn(move || {
@@ -861,7 +863,7 @@ mod tests {
         });
     }
 
-
+    #[cfg(feature = "warnings")]
     #[test]
     #[ignore]
     fn it_spawns_a_writer_thread_and_sends_dummy_measurement_to_influxdb() {
