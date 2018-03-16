@@ -1,14 +1,13 @@
-use std::sync::mpsc::{Sender, Receiver, channel, SendError};
+use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
 use std::time::{Instant, Duration, SystemTime, UNIX_EPOCH};
 use std::path::PathBuf;
 use std::thread::{self, JoinHandle};
-use std::io::{self, Write};
+use std::io;
 use std::{mem, fs, env};
 
-use chrono::{DateTime, Utc, TimeZone};
-use hdrhistogram::{Histogram, Counter};
-use hdrhistogram::serialization::{Serializer, V2DeflateSerializer, V2Serializer};
+use hdrhistogram::{Histogram};
+use hdrhistogram::serialization::V2DeflateSerializer;
 use hdrhistogram::serialization::interval_log::{IntervalLogWriterBuilder, Tag};
 
 type C = u64;
@@ -173,22 +172,3 @@ impl Drop for HistLog {
         }
     }
 }
-
-
-
-
-// pub fn save_hist<T: Counter>(thread: &'static str, ticker: Ticker, hist: Histogram<T>) {
-//     env::home_dir().and_then(|mut path| {
-//         path.push(&format!("src/market-maker/var/hist/{}/", ticker.to_str()));
-//         let _ = fs::create_dir_all(&path);
-//         path.push(&format!("mm-v{}-{}-{}-1h-{}.v2", crate_version!(), thread, ticker.to_string(), Utc::now().to_rfc3339()));
-//         fs::File::create(&path).ok()
-//     }).map(|mut file| {
-//         let mut ser = V2DeflateSerializer::new();
-//         ser.serialize(&hist, &mut file)
-//             .map_err(|e| {
-//                 let _ = write!(&mut file, "\n\n{:?}", e);
-//                 e
-//             }).ok();
-//     });
-// }
