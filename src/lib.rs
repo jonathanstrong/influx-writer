@@ -22,6 +22,7 @@ extern crate ordermap;
 extern crate decimal;
 extern crate uuid;
 extern crate hdrhistogram;
+extern crate smallvec;
 
 extern crate windows;
 extern crate pubsub as pub_sub;
