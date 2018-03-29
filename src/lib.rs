@@ -50,7 +50,7 @@ pub const LOG_LEVEL                 : Severity          = Severity::Debug;
 #[cfg(not(any(feature = "debug", feature = "trace")))]
 pub const LOG_LEVEL                 : Severity          = Severity::Info;
 
-const CHANNEL_SIZE: usize = 40_000;
+const CHANNEL_SIZE: usize = 20_000;
 
 /// converts a chrono::DateTime to an integer timestamp (ns)
 ///
