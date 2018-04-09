@@ -23,6 +23,7 @@ use fnv::FnvHasher;
 use decimal::d128;
 use uuid::Uuid;
 use smallvec::SmallVec;
+use slog::Logger;
 
 use super::{nanos, file_logger, LOG_LEVEL};
 #[cfg(feature = "warnings")]
@@ -208,10 +209,14 @@ impl InfluxWriter {
         self.tx.clone()
     }
 
-    #[allow(unused_assignments)]
     pub fn new(host: &str, db: &str, log_path: &str, buffer_size: u16) -> Self {
-        let (tx, rx): (Sender<Option<OwnedMeasurement>>, Receiver<Option<OwnedMeasurement>>) = channel();
         let logger = file_logger(log_path, LOG_LEVEL); // this needs to be outside the thread
+        Self::with_logger(host, db, buffer_size, logger)
+    }
+
+    #[allow(unused_assignments)]
+    pub fn with_logger(host: &str, db: &str, buffer_size: u16, logger: Logger) -> Self {
+        let (tx, rx): (Sender<Option<OwnedMeasurement>>, Receiver<Option<OwnedMeasurement>>) = channel();
 
         #[cfg(feature = "no-influx-buffer")]
         let buffer_size = 0u16;
@@ -934,7 +939,7 @@ mod tests {
         buf.push_str(&buf_copy);
         println!("{}", buf);
 
-        let url = Url::parse_with_params("localhost", &[("db", "test"), ("precision", "ns")]).expect("influx writer url should parse");
+        let url = Url::parse_with_params("http://localhost:8086/write", &[("db", "test"), ("precision", "ns")]).expect("influx writer url should parse");
         let client = Client::new();
         match client.post(url.clone())
                     .body(&buf)
@@ -1007,7 +1012,7 @@ mod tests {
         buf.push_str(&buf_copy);
         println!("{}", buf);
 
-        let url = Url::parse_with_params("localhost", &[("db", "test"), ("precision", "ns")]).expect("influx writer url should parse");
+        let url = Url::parse_with_params("http://localhost:8086/write", &[("db", "test"), ("precision", "ns")]).expect("influx writer url should parse");
         let client = Client::new();
         match client.post(url.clone())
                     .body(&buf)
