@@ -205,6 +205,8 @@ impl InfluxWriter {
 
     pub fn nanos(&self, d: DateTime<Utc>) -> i64 { nanos(d) as i64 }
 
+    pub fn dur_nanos(&self, d: Duration) -> i64 { dur_nanos(d) as i64 }
+
     pub fn tx(&self) -> Sender<Option<OwnedMeasurement>> {
         self.tx.clone()
     }
