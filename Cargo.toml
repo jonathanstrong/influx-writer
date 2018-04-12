@@ -26,12 +26,13 @@ uuid = { version = "0.5", features = ["serde", "v4"] }
 hdrhistogram = "6"
 slog-async = "2"
 smallvec = "0.6"
+num = "0.1"
 
 sloggers = { path = "../sloggers" }
 
 decimal = { path = "../decimal", version = "2" }
 
-windows = { path = "../windows", version = "0.2" }
+#windows = { path = "../windows", version = "0.2" }
 money = { path = "../money", version = "0.2" }
 pubsub = { path = "../pubsub" }
 
