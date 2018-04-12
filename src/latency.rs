@@ -257,8 +257,8 @@ impl Manager {
                     debug!(logger, "initalizing broadcast");
 
                     let update = Update {
-                        gdax_ws: gdax_ws.refresh(&loop_time).mean_nanos(),
-                        gdax_trade: gdax_trade.refresh(&loop_time).mean_nanos(),
+                        gdax_ws: gdax_ws.refresh(loop_time).mean_nanos(),
+                        gdax_trade: gdax_trade.refresh(loop_time).mean_nanos(),
                         gdax_last: dt_from_dur(loop_time - last.gdax)
                     };
                     channel.send(update).unwrap();
@@ -395,15 +395,15 @@ impl LatencyManager {
                     // above, we need a fresh Instant to avoid less than other
                     // panic
                     //
-                    krkn_trade_30.refresh(&loop_time);
-                    krkn_trade_300.refresh(&loop_time);
+                    krkn_trade_30.refresh(loop_time);
+                    krkn_trade_300.refresh(loop_time);
                     let update = LatencyUpdate {
-                        gdax_ws: gdax_ws.refresh(&loop_time).mean_nanos(),
-                        krkn_pub: krkn_pub.refresh(&loop_time).mean_nanos(),
-                        krkn_priv: krkn_priv.refresh(&loop_time).mean_nanos(),
-                        plnx_pub: plnx_pub.refresh(&loop_time).mean_nanos(),
-                        plnx_priv: plnx_priv.refresh(&loop_time).mean_nanos(),
-                        plnx_order: plnx_order.refresh(&loop_time).mean_nanos(),
+                        gdax_ws: gdax_ws.refresh(loop_time).mean_nanos(),
+                        krkn_pub: krkn_pub.refresh(loop_time).mean_nanos(),
+                        krkn_priv: krkn_priv.refresh(loop_time).mean_nanos(),
+                        plnx_pub: plnx_pub.refresh(loop_time).mean_nanos(),
+                        plnx_priv: plnx_priv.refresh(loop_time).mean_nanos(),
+                        plnx_order: plnx_order.refresh(loop_time).mean_nanos(),
 
                         krkn_trade_30_mean: krkn_trade_30.mean_nanos(),
                         krkn_trade_30_max: krkn_trade_30.max_nanos().unwrap_or(0),
@@ -414,7 +414,7 @@ impl LatencyManager {
                         plnx_last: dt_from_dur(loop_time - last.plnx),
                         krkn_last: dt_from_dur(loop_time - last.krkn),
 
-                        plnx_ws_count: plnx_ws_count.refresh(&loop_time).count() as u64,
+                        plnx_ws_count: plnx_ws_count.refresh(loop_time).count() as u64,
 
                     };
                     channel.send(update).unwrap();
