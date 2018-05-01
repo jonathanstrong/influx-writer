@@ -37,6 +37,7 @@ use sloggers::types::TimeZone;
 #[allow(unused_imports)]
 use sloggers::file::FileLoggerBuilder;
 use slog::Drain;
+use uuid::Uuid;
 
 pub mod influx;
 #[cfg(feature = "warnings")]
@@ -96,4 +97,10 @@ pub fn dur_nanos(d: ::std::time::Duration) -> i64 {
     (d.as_secs() * 1_000_000_000_u64 + (d.subsec_nanos() as u64)) as i64
 }
 
-
+pub fn short_uuid(id: &Uuid) -> String {
+    if cfg!(feature = "disable-short-uuid") {
+        id.to_string()
+    } else {
+        format!("{}", &id.to_string()[..8])
+    }
+}
