@@ -46,13 +46,16 @@ pub mod latency;
 pub mod hist;
 
 #[cfg(feature = "trace")]
-pub const LOG_LEVEL                 : Severity          = Severity::Trace;
+pub const LOG_LEVEL: Severity = Severity::Trace;
 #[cfg(all(feature = "debug", not(feature = "trace")))]
-pub const LOG_LEVEL                 : Severity          = Severity::Debug;
+pub const LOG_LEVEL: Severity = Severity::Debug;
 #[cfg(not(any(feature = "debug", feature = "trace")))]
-pub const LOG_LEVEL                 : Severity          = Severity::Info;
+pub const LOG_LEVEL: Severity = Severity::Info;
 
-const CHANNEL_SIZE: usize = 20_000;
+#[cfg(not(feature = "trace"))]
+const CHANNEL_SIZE: usize = 32_768;
+#[cfg(feature = "trace")]
+const CHANNEL_SIZE: usize = 2_097_152;
 
 /// converts a chrono::DateTime to an integer timestamp (ns)
 ///
