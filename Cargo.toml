@@ -37,6 +37,7 @@ money = { path = "../money", version = "0.2" }
 pubsub = { path = "../pubsub" }
 
 [features]
+default = ["inlines"]
 no-thrash = []
 trace = []
 debug = []
@@ -48,3 +49,4 @@ scholes = []
 no-influx-buffer = []
 disable-short-uuid = []
 warnings = []
+inlines = []

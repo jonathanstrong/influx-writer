@@ -199,18 +199,18 @@ impl Clone for InfluxWriter {
 impl InfluxWriter {
     /// Sends the `OwnedMeasurement` to the serialization thread. 
     /// 
-    #[inline]
+    #[cfg_attr(feature = "inlines", inline)]
     pub fn send(&self, m: OwnedMeasurement) -> Result<(), SendError<Option<OwnedMeasurement>>> {
         self.tx.send(Some(m))
     }
 
-    #[inline]
+    #[cfg_attr(feature = "inlines", inline)]
     pub fn nanos(&self, d: DateTime<Utc>) -> i64 { nanos(d) as i64 }
 
-    #[inline]
+    #[cfg_attr(feature = "inlines", inline)]
     pub fn dur_nanos(&self, d: Duration) -> i64 { dur_nanos(d) as i64 }
 
-    #[inline]
+    #[cfg_attr(feature = "inlines", inline)]
     pub fn dur_nanos_u64(&self, d: Duration) -> u64 { dur_nanos(d).max(0) as u64 }
 
     pub fn tx(&self) -> Sender<Option<OwnedMeasurement>> {
