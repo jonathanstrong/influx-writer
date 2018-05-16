@@ -25,7 +25,6 @@ extern crate hdrhistogram;
 extern crate smallvec;
 extern crate num;
 
-//extern crate windows;
 extern crate pubsub as pub_sub;
 
 use chrono::{DateTime, Utc};

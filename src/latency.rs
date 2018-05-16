@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::thread::{self, JoinHandle};
 use std::sync::mpsc::{Sender, channel};
 use std::fmt;
@@ -373,21 +374,6 @@ mod windows {
         #[inline]
         pub fn nanos(d: Duration)   -> u64 { d.as_secs() * 1_000_000_000 + (d.subsec_nanos() as u64) }
 
-        /// Returns number of microseconds as `u32` if `d <= Duration::new(4_294, 967_295_000)`.
-        ///
-        /// Any duration above ~4,295 seconds as micros is larger than `u32::MAX`. 4,295 seconds
-        /// is about 71.5 minutes.
-        ///
-        /// # Examples
-        ///
-        /// ```
-        /// use windows::DurationWindow;
-        /// use std::time::Duration;
-        ///
-        /// assert_eq!(DurationWindow::micros(Duration::new(1, 0)), Some(1_000_000));
-        /// assert_eq!(DurationWindow::micros(Duration::new(4_295, 0)), None);
-        /// ```
-        ///
         #[inline]
         pub fn micros(d: Duration)  -> Option<u32> {
             if d <= Duration::new(4_294, 967_295_000) {
