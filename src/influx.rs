@@ -37,6 +37,38 @@ pub fn new_map<K, V>(capacity: usize) -> Map<K, V> {
     Map::with_capacity_and_hasher(capacity, Default::default())
 }
 
+/// Created this so I know what types can be passed through the
+/// `measure!` macro, which used to convert with `as i64` and
+/// `as f64` until I accidentally passed a function name, and it
+/// still compiled, but with garbage numbers.
+pub trait AsI64 {
+    fn as_i64(x: Self) -> i64;
+}
+
+impl AsI64 for i64 { fn as_i64(x: Self) -> i64 { x } }
+impl AsI64 for i32 { fn as_i64(x: Self) -> i64 { x as i64 } }
+impl AsI64 for u32 { fn as_i64(x: Self) -> i64 { x as i64 } }
+impl AsI64 for u64 { fn as_i64(x: Self) -> i64 { x as i64 } }
+impl AsI64 for usize { fn as_i64(x: Self) -> i64 { x as i64 } }
+impl AsI64 for f64 { fn as_i64(x: Self) -> i64 { x as i64 } }
+impl AsI64 for f32 { fn as_i64(x: Self) -> i64 { x as i64 } }
+
+/// Created this so I know what types can be passed through the
+/// `measure!` macro, which used to convert with `as i64` and
+/// `as f64` until I accidentally passed a function name, and it
+/// still compiled, but with garbage numbers.
+pub trait AsF64 {
+    fn as_f64(x: Self) -> f64;
+}
+
+impl AsF64 for f64 { fn as_f64(x: Self) -> f64 { x } }
+impl AsF64 for i64 { fn as_f64(x: Self) -> f64 { x as f64 } }
+impl AsF64 for i32 { fn as_f64(x: Self) -> f64 { x as f64 } }
+impl AsF64 for u32 { fn as_f64(x: Self) -> f64 { x as f64 } }
+impl AsF64 for u64 { fn as_f64(x: Self) -> f64 { x as f64 } }
+impl AsF64 for usize { fn as_f64(x: Self) -> f64 { x as f64 } }
+impl AsF64 for f32 { fn as_f64(x: Self) -> f64 { x as f64 } }
+
 /// Provides flexible and ergonomic use of `Sender<OwnedMeasurement>`.
 ///
 /// The macro both creates an `OwnedMeasurement` from the supplied tags and
@@ -48,6 +80,7 @@ pub fn new_map<K, V>(capacity: usize) -> Map<K, V> {
 /// # Examples
 ///
 /// ```
+/// #![feature(try_from)]
 /// #[macro_use] extern crate logging;
 /// extern crate decimal;
 ///
@@ -107,23 +140,23 @@ macro_rules! measure {
     (@kv $t:tt, $meas:ident, $k:tt => $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
     (@kv $t:tt, $meas:ident, $k:tt; $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
     (@kv $t:tt, $meas:ident, $k:tt, $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
-    (@kv time, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp($tm as i64) };
-    (@kv tm, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp($tm as i64) };
+    (@kv time, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp(AsI64::as_i64($tm)) };
+    (@kv tm, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp(AsI64::as_i64($tm)) };
     (@kv $t:tt, $meas:ident, $k:tt) => { measure!(@ea $t, $meas, stringify!($k), measure!(@as_expr $k)) };
     (@ea tag, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
     (@ea t, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
-    (@ea int, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Integer($v as i64)) };
-    (@ea i, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Integer($v as i64)) };
-    (@ea float, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Float($v as f64)) };
-    (@ea f, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Float($v as f64)) };
+    (@ea int, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Integer(AsI64::as_i64($v))) };
+    (@ea i, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Integer(AsI64::as_i64($v))) };
+    (@ea float, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Float(AsF64::as_f64($v))) };
+    (@ea f, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Float(AsF64::as_f64($v))) };
     (@ea string, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::String($v)) };
     (@ea s, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::String($v)) };
     (@ea d128, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::D128($v)) };
     (@ea d, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::D128($v)) };
     (@ea uuid, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Uuid($v)) };
     (@ea u, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Uuid($v)) };
-    (@ea bool, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Boolean($v as bool)) };
-    (@ea b, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Boolean($v as bool)) };
+    (@ea bool, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Boolean(bool::from($v))) };
+    (@ea b, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Boolean(bool::from($v))) };
 
     (@as_expr $e:expr) => {$e};
     
@@ -156,6 +189,8 @@ macro_rules! measure {
     };
 
     ($m:tt, $name:tt, $( $t:tt [ $($tail:tt)* ] ),+ $(,)*) => {{
+        #[allow(unused_imports)]
+        use $crate::influx::{AsI64, AsF64};
         let measurement = measure!(@make_meas $name, $( $t [ $($tail)* ] ),*);
         let _ = $m.send(measurement);
     }};
