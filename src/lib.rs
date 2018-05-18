@@ -58,8 +58,14 @@ const CHANNEL_SIZE: usize = 2_097_152;
 
 /// converts a chrono::DateTime to an integer timestamp (ns)
 ///
+#[inline]
 pub fn nanos(t: DateTime<Utc>) -> u64 {
     (t.timestamp() as u64) * 1_000_000_000_u64 + (t.timestamp_subsec_nanos() as u64)
+}
+
+#[inline]
+pub fn inanos(t: DateTime<Utc>) -> i64 {
+    t.timestamp() * 1_000_000_000i64 + t.timestamp_subsec_nanos() as i64
 }
 
 //#[cfg(not(any(test, feature = "test")))]
@@ -91,6 +97,7 @@ pub fn async_file_logger(path: &str, level: Severity) -> slog::Logger {
     slog::Logger::root(async_drain.fuse(), o!())
 }
 
+//#[deprecated(since="0.4.3", note="Use `nanos(DateTime<Utc>) -> u64` instead")]
 pub fn dt_nanos(t: DateTime<Utc>) -> i64 {
     (t.timestamp() as i64) * 1_000_000_000_i64 + (t.timestamp_subsec_nanos() as i64)
 }
