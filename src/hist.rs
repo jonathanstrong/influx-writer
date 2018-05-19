@@ -10,7 +10,7 @@ use hdrhistogram::{Histogram};
 use hdrhistogram::serialization::V2DeflateSerializer;
 use hdrhistogram::serialization::interval_log::{IntervalLogWriterBuilder, Tag};
 
-type C = u64;
+pub type C = u64;
 
 pub fn nanos(d: Duration) -> u64 {
     d.as_secs() * 1_000_000_000_u64 + (d.subsec_nanos() as u64)
