@@ -52,6 +52,7 @@ impl AsI64 for u64 { fn as_i64(x: Self) -> i64 { x as i64 } }
 impl AsI64 for usize { fn as_i64(x: Self) -> i64 { x as i64 } }
 impl AsI64 for f64 { fn as_i64(x: Self) -> i64 { x as i64 } }
 impl AsI64 for f32 { fn as_i64(x: Self) -> i64 { x as i64 } }
+impl AsI64 for u16 { fn as_i64(x: Self) -> i64 { x as i64 } }
 
 /// Created this so I know what types can be passed through the
 /// `measure!` macro, which used to convert with `as i64` and
