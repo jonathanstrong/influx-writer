@@ -22,7 +22,7 @@ slog = "2.0.6"
 slog-term = "2"
 ordermap = "0.3"
 fnv = "1"
-uuid = { version = "0.6", features = ["serde", "v4"] }
+uuid = { version = "0.6", features = ["serde", "v4", "nightly", "const_fn"] }
 hdrhistogram = "6"
 slog-async = "2"
 smallvec = "0.6"
