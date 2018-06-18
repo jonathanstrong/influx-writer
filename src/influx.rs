@@ -143,6 +143,8 @@ macro_rules! measure {
     (@kv $t:tt, $meas:ident, $k:tt, $v:expr) => { measure!(@ea $t, $meas, stringify!($k), $v) };
     (@kv time, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp(AsI64::as_i64($tm)) };
     (@kv tm, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp(AsI64::as_i64($tm)) };
+    (@kv utc, $meas:ident, $tm:expr) => { $meas = $meas.set_timestamp(AsI64::as_i64($crate::nanos($tm))) };
+    (@kv v, $meas:ident, $k:expr) => { measure!(@ea tag, $meas, "version", $k) };
     (@kv $t:tt, $meas:ident, $k:tt) => { measure!(@ea $t, $meas, stringify!($k), measure!(@as_expr $k)) };
     (@ea tag, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
     (@ea t, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
@@ -700,6 +702,30 @@ impl OwnedMeasurement {
 mod tests {
     use super::*;
     use test::{black_box, Bencher};
+
+    #[test]
+    fn it_uses_the_utc_shortcut_to_convert_a_datetime_utc() {
+        const VERSION: &str = "0.3.90";
+        let tag_value = "one";
+        let color = "red";
+        let time = Utc::now();
+        let m = measure!(@make_meas test, i(n, 1), t(color), v(VERSION), utc(time));
+        assert_eq!(m.get_tag("color"), Some("red"));
+        assert_eq!(m.get_tag("version"), Some(VERSION));
+        assert_eq!(m.timestamp, Some(nanos(time) as i64));
+    }
+
+    #[test]
+    fn it_uses_the_v_for_version_shortcut() {
+        const VERSION: &str = "0.3.90";
+        let tag_value = "one";
+        let color = "red";
+        let time = now();
+        let m = measure!(@make_meas test, i(n, 1), t(color), v(VERSION), tm(time));
+        assert_eq!(m.get_tag("color"), Some("red"));
+        assert_eq!(m.get_tag("version"), Some(VERSION));
+        assert_eq!(m.timestamp, Some(time));
+    }
 
     #[test]
     fn it_uses_the_new_tag_k_only_shortcut() {
