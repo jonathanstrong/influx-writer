@@ -251,6 +251,14 @@ impl InfluxWriter {
     #[cfg_attr(feature = "inlines", inline)]
     pub fn dur_nanos_u64(&self, d: Duration) -> u64 { dur_nanos(d).max(0) as u64 }
 
+    #[cfg_attr(feature = "inlines", inline)]
+    pub fn secs(&self, d: Duration) -> f64 {
+        ((d.as_secs() as f64 + (d.subsec_nanos() as f64 / 1_000_000_000_f64))
+            * 1000.0)
+            .round()
+            / 1000.0
+    }
+
     pub fn tx(&self) -> Sender<Option<OwnedMeasurement>> {
         self.tx.clone()
     }
@@ -652,11 +660,15 @@ impl OwnedMeasurement {
         }
     }
 
+    /// Unusual consuming `self` signature because primarily used by
+    /// the `measure!` macro.
     pub fn add_tag(mut self, key: &'static str, value: &'static str) -> Self {
         self.tags.push((key, value));
         self
     }
 
+    /// Unusual consuming `self` signature because primarily used by
+    /// the `measure!` macro.
     pub fn add_field(mut self, key: &'static str, value: OwnedValue) -> Self {
         self.fields.push((key, value));
         self
