@@ -33,7 +33,7 @@ sloggers = { path = "../sloggers" }
 decimal = { path = "../decimal", version = "2" }
 
 #windows = { path = "../windows", version = "0.2" }
-money = { path = "../money", version = "0.2" }
+money = { path = "../money", version = "0.3" }
 pubsub = { path = "../pubsub" }
 
 [features]
