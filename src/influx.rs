@@ -539,14 +539,24 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
         match *value {
             OwnedValue::String(ref s)  => line.push_str(&as_string(s)),
             OwnedValue::Integer(ref i) => line.push_str(&format!("{}i", i)),
-            OwnedValue::Float(ref f)   => line.push_str(&format!("{}", f)),
             OwnedValue::Boolean(ref b) => line.push_str(as_boolean(b)),
-            OwnedValue::D128(ref d)    => line.push_str(&format!("{}", d)),
 
-            #[cfg(not(feature = "disable-short-uuid"))]
-            OwnedValue::Uuid(ref u)    => line.push_str(&format!("\"{}\"", &u.to_string()[..8])),
+            OwnedValue::D128(ref d) => {
+                if d.is_finite() {
+                    line.push_str(&format!("{}", d));
+                } else {
+                    line.push_str("0.0");
+                }
+            }
 
-            #[cfg(feature = "disable-short-uuid")]
+            OwnedValue::Float(ref f)   => {
+                if f.is_finite() {
+                    line.push_str(&format!("{}", f));
+                } else {
+                    line.push_str("0.0");
+                }
+            }
+
             OwnedValue::Uuid(ref u)    => line.push_str(&format!("\"{}\"", u)),
         };
     };
