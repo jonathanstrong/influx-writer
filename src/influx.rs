@@ -15,6 +15,7 @@ use hyper::client::response::Response;
 use hyper::Url;
 use hyper::client::Client;
 use influent::measurement::{Measurement, Value};
+#[cfg(feature = "zmq")]
 use zmq;
 #[allow(unused_imports)]
 use chrono::{DateTime, Utc};
@@ -398,8 +399,10 @@ impl Drop for InfluxWriter {
     }
 }
 
+#[cfg(feature = "zmq")]
 const WRITER_ADDR: &'static str = "ipc:///tmp/mm/influx";
 
+#[cfg(feature = "zmq")]
 pub fn pull(ctx: &zmq::Context) -> Result<zmq::Socket, zmq::Error> {
     let socket = ctx.socket(zmq::PULL)?;
     socket.bind(WRITER_ADDR)?;
@@ -407,6 +410,7 @@ pub fn pull(ctx: &zmq::Context) -> Result<zmq::Socket, zmq::Error> {
     Ok(socket)
 }
 
+#[cfg(feature = "zmq")]
 pub fn push(ctx: &zmq::Context) -> Result<zmq::Socket, zmq::Error> {
     let socket = ctx.socket(zmq::PUSH)?;
     socket.connect(WRITER_ADDR)?;
@@ -583,6 +587,7 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
 
 #[cfg(feature = "warnings")]
 #[deprecated(since="0.4", note="Replace with InfluxWriter")]
+#[cfg(feature = "zmq")]
 pub fn writer(warnings: Sender<Warning>) -> thread::JoinHandle<()> {
     assert!(false);
     thread::Builder::new().name("mm:inflx-wtr".into()).spawn(move || {
@@ -998,6 +1003,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature = "zmq")]
     #[cfg(feature = "warnings")]
     #[test]
     #[ignore]

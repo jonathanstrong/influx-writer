@@ -9,6 +9,7 @@ use std::fmt::{self, Display, Error as FmtError, Formatter};
 use std::io::{self, Write};
 use std::fs;
 
+#[cfg(feature = "zmq")]
 use zmq;
 use chrono::{DateTime, Utc};
 use termion::color::{self, Fg, Bg};
@@ -417,6 +418,7 @@ impl WarningsManager {
     /// `measurement_name` is the name of the influxdb measurement
     /// we will save log entries to.
     ///
+    #[cfg(feature = "zmq")]
     pub fn new(measurement_name: &'static str) -> Self {
         let warnings = Arc::new(RwLock::new(VecDeque::new()));
         let warnings_copy = warnings.clone();
@@ -486,6 +488,7 @@ impl Drop for WarningsManager {
     }
 }
 
+#[cfg(feature = "zmq")]
 #[allow(dead_code)]
 pub struct ZmqDrain<D>
     where D: Drain,
@@ -496,6 +499,7 @@ pub struct ZmqDrain<D>
     buf: Arc<Mutex<Vec<u8>>>
 }
 
+#[cfg(feature = "zmq")]
 impl<D> ZmqDrain<D> 
     where D: Drain,
 {
@@ -517,6 +521,7 @@ impl<D> ZmqDrain<D>
 
 const TIMESTAMP_FORMAT: &'static str = "%b %d %H:%M:%S%.3f";
 
+#[cfg(feature = "zmq")]
 impl<D> Drain for ZmqDrain<D> 
     where D: Drain
 {
@@ -557,6 +562,7 @@ impl<D> Drain for ZmqDrain<D>
 /// Can be used as a `Write` with `slog_term` and
 /// other libraries. 
 ///
+#[cfg(feature = "zmq")]
 #[allow(dead_code)]
 pub struct ZmqIo {
     ctx: zmq::Context,
@@ -564,6 +570,7 @@ pub struct ZmqIo {
     buf: Vec<u8>
 }
 
+#[cfg(feature = "zmq")]
 impl ZmqIo {
     pub fn new(addr: &str) -> Self {
         let _ = fs::create_dir("/tmp/mm");
@@ -576,6 +583,7 @@ impl ZmqIo {
     }
 }
 
+#[cfg(feature = "zmq")]
 impl Write for ZmqIo {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.buf.write(buf)

@@ -9,7 +9,6 @@
 #[macro_use] extern crate money;
 
 extern crate test;
-extern crate zmq;
 extern crate influent;
 extern crate chrono;
 extern crate hyper;
@@ -24,6 +23,8 @@ extern crate uuid;
 extern crate hdrhistogram;
 extern crate smallvec;
 extern crate num;
+#[cfg(feature = "zmq")]
+extern crate zmq;
 
 extern crate pubsub as pub_sub;
 

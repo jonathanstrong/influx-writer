@@ -647,7 +647,6 @@ impl LatencyManager {
 
         let thread = Some(thread::spawn(move || { 
             let logger = file_logger("var/log/latency-manager.log", Severity::Info);
-            info!(logger, "initializing zmq");
 
             info!(logger, "initializing DurationWindows");
             let mut gdax_ws = windows::DurationWindow::new(d);

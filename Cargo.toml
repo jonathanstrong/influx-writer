@@ -6,14 +6,14 @@ authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 [[example]]
 name = "zmq-logger"
 path = "examples/zmq-logger.rs"
-required-features = ["warnings"]
+required-features = ["warnings", "zmq"]
 
 [[example]]
 name = "hist-interval"
 path = "examples/hist-interval.rs"
 
 [dependencies]
-zmq = "0.8"
+zmq = { version = "0.8", optional = true }
 influent = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 hyper = "0.10"
