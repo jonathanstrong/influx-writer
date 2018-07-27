@@ -60,6 +60,26 @@ impl HistLog {
         Self { series, tag, freq, last_sent, tx, hist, thread }
     }
 
+    /// Create a new `HistLog` that will save results in a specified
+    /// directory (`path`).
+    pub fn with_path(
+        path: &str,
+        series: &'static str,
+        tag: &'static str,
+        freq: Duration,
+    ) -> Self {
+        let (tx, rx) = channel();
+        let dir = PathBuf::from(path);
+        // let mut dir = env::home_dir().unwrap();
+        // dir.push("src/market-maker/var/hist");
+        fs::create_dir_all(&dir).ok();
+        let thread = Some(Arc::new(Self::scribe(series, rx, dir)));
+        let last_sent = Instant::now();
+        let hist = Histogram::new(3).unwrap();
+        Self { series, tag, freq, last_sent, tx, hist, thread }
+    }
+
+
     pub fn new_with_tag(&self, tag: &'static str) -> Self {
         Self::new(self.series, tag, self.freq)
     }
