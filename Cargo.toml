@@ -27,6 +27,7 @@ hdrhistogram = "6"
 slog-async = "2"
 smallvec = "0.6"
 num = "0.1"
+dirs = "1"
 
 sloggers = { path = "../sloggers" }
 

@@ -4,8 +4,9 @@ use std::time::{Instant, Duration, SystemTime, UNIX_EPOCH};
 use std::path::PathBuf;
 use std::thread::{self, JoinHandle};
 use std::io;
-use std::{mem, fs, env};
+use std::{mem, fs};
 
+use dirs::home_dir;
 use hdrhistogram::{Histogram};
 use hdrhistogram::serialization::V2DeflateSerializer;
 use hdrhistogram::serialization::interval_log::{IntervalLogWriterBuilder, Tag};
@@ -51,7 +52,7 @@ impl Clone for HistLog {
 impl HistLog {
     pub fn new(series: &'static str, tag: &'static str, freq: Duration) -> Self {
         let (tx, rx) = channel();
-        let mut dir = env::home_dir().unwrap();
+        let mut dir = home_dir().expect("home_dir");
         dir.push("src/market-maker/var/hist");
         fs::create_dir_all(&dir).unwrap();
         let thread = Some(Arc::new(Self::scribe(series, rx, dir)));

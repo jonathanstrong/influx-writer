@@ -23,6 +23,7 @@ extern crate uuid;
 extern crate hdrhistogram;
 extern crate smallvec;
 extern crate num;
+extern crate dirs;
 #[cfg(feature = "zmq")]
 extern crate zmq;
 
