@@ -29,7 +29,7 @@ extern crate zmq;
 
 extern crate pubsub as pub_sub;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, TimeZone as ChronoTZ};
 #[allow(unused_imports)]
 use sloggers::Build;
 #[allow(unused_imports)]
@@ -104,8 +104,14 @@ pub fn dt_nanos(t: DateTime<Utc>) -> i64 {
     (t.timestamp() as i64) * 1_000_000_000_i64 + (t.timestamp_subsec_nanos() as i64)
 }
 
+#[inline]
 pub fn dur_nanos(d: ::std::time::Duration) -> i64 {
     (d.as_secs() * 1_000_000_000_u64 + (d.subsec_nanos() as u64)) as i64
+}
+
+#[inline]
+pub fn nanos_utc(t: i64) -> DateTime<Utc> {
+    Utc.timestamp(t / 1_000_000_000, (t % 1_000_000_000) as u32)
 }
 
 pub fn short_uuid(id: &Uuid) -> String {
