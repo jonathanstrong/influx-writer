@@ -222,7 +222,7 @@ impl Default for InfluxWriter {
         //if cfg!(any(test, feature = "test")) {
         //    InfluxWriter::new("localhost", "test", "/home/jstrong/src/logging/var/log/influx-test.log", 0)
         //} else {
-            InfluxWriter::new("localhost", "test", "/tmp/influx-test.log", 4000)
+            InfluxWriter::new("localhost", "test", "/tmp/influx-test.log", 4096)
         //}
     }
 }
