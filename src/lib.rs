@@ -26,7 +26,7 @@ extern crate num;
 extern crate dirs;
 #[cfg(feature = "zmq")]
 extern crate zmq;
-
+#[cfg(feature = "latency")]
 extern crate pubsub as pub_sub;
 
 use chrono::{DateTime, Utc, TimeZone as ChronoTZ};
@@ -43,6 +43,7 @@ use uuid::Uuid;
 pub mod influx;
 #[cfg(feature = "warnings")]
 pub mod warnings;
+#[cfg(feature = "latency")]
 pub mod latency;
 pub mod hist;
 
