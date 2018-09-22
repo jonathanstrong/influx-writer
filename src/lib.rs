@@ -29,6 +29,7 @@ extern crate zmq;
 #[cfg(feature = "latency")]
 extern crate pubsub as pub_sub;
 
+use std::time::Duration;
 use chrono::{DateTime, Utc, TimeZone as ChronoTZ};
 #[allow(unused_imports)]
 use sloggers::Build;
@@ -64,6 +65,11 @@ const CHANNEL_SIZE: usize = 2_097_152;
 #[inline]
 pub fn nanos(t: DateTime<Utc>) -> u64 {
     (t.timestamp() as u64) * 1_000_000_000_u64 + (t.timestamp_subsec_nanos() as u64)
+}
+
+#[inline]
+pub fn secs(d: Duration) -> f64 {
+    d.as_secs() as f64 + d.subsec_nanos() as f64 / 1_000_000_000_f64
 }
 
 #[inline]

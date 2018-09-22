@@ -258,11 +258,16 @@ impl InfluxWriter {
     pub fn dur_nanos_u64(&self, d: Duration) -> u64 { dur_nanos(d).max(0) as u64 }
 
     #[cfg_attr(feature = "inlines", inline)]
-    pub fn secs(&self, d: Duration) -> f64 {
+    pub fn rsecs(&self, d: Duration) -> f64 {
         ((d.as_secs() as f64 + (d.subsec_nanos() as f64 / 1_000_000_000_f64))
             * 1000.0)
             .round()
             / 1000.0
+    }
+
+    #[cfg_attr(feature = "inlines", inline)]
+    pub fn secs(&self, d: Duration) -> f64 {
+        d.as_secs() as f64 + d.subsec_nanos() as f64 / 1_000_000_000_f64
     }
 
     pub fn tx(&self) -> Sender<Option<OwnedMeasurement>> {
