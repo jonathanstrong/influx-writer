@@ -241,6 +241,10 @@ impl Clone for InfluxWriter {
 }
 
 impl InfluxWriter {
+    pub fn host(&self) -> &str { self.host.as_str() }
+
+    pub fn db(&self) -> &str { self.db.as_str() }
+
     /// Sends the `OwnedMeasurement` to the serialization thread.
     ///
     #[cfg_attr(feature = "inlines", inline)]
