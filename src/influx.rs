@@ -580,7 +580,7 @@ pub fn serialize_owned(measurement: &OwnedMeasurement, line: &mut String) {
                 if f.is_finite() {
                     line.push_str(&format!("{}", f));
                 } else {
-                    line.push_str("0.0");
+                    line.push_str("-999.0");
                 }
             }
 
