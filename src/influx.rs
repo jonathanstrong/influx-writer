@@ -278,6 +278,16 @@ impl InfluxWriter {
         self.tx.clone()
     }
 
+    pub fn placeholder() -> Self {
+        let (tx, _) = channel();
+        Self {
+            host: String::new(),
+            db: String::new(),
+            tx,
+            thread: None,
+        }
+    }
+
     pub fn new(host: &str, db: &str, log_path: &str, buffer_size: u16) -> Self {
         let logger = file_logger(log_path, LOG_LEVEL); // this needs to be outside the thread
         Self::with_logger(host, db, buffer_size, logger)
