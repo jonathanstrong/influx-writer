@@ -408,8 +408,8 @@ impl InfluxWriter {
             let mut buf = spares.pop_front().unwrap();
             let mut count = 0;
             let mut extras = 0; // any new Strings we intro to the system
-            let mut last = Instant::now();
-            let mut last_clear = Instant::now();
+            let last = Instant::now();
+            let last_clear = Instant::now();
             let mut loop_time = Instant::now();
 
             let n_out = |s: &VecDeque<String>, b: &VecDeque<String>, extras: usize| -> usize {
@@ -534,7 +534,7 @@ impl InfluxWriter {
 
                         count = match next(count, &meas, &mut buf, loop_time, last) {
                             Ok(n) => n,
-                            Err(n) => {
+                            Err(_n) => {
                                 let mut count = 0;
                                 let mut next: String = match spares.pop_front() {
                                     Some(x) => x,
