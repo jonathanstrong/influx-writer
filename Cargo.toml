@@ -28,6 +28,7 @@ slog-async = "2"
 smallvec = "0.6"
 num = "0.1"
 dirs = "1"
+crossbeam-channel = "0.3"
 
 sloggers = { path = "../sloggers" }
 

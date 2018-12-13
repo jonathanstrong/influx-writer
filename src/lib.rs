@@ -24,6 +24,7 @@ extern crate hdrhistogram;
 extern crate smallvec;
 extern crate num;
 extern crate dirs;
+extern crate crossbeam_channel;
 #[cfg(feature = "zmq")]
 extern crate zmq;
 #[cfg(feature = "latency")]
