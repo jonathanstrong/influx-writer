@@ -431,7 +431,7 @@ impl InfluxWriter {
                 }
                 let url = url.clone(); // Arc would be faster, but `hyper::Client::post` consumes url
                 let tx = http_tx.clone();
-                let thread_logger = logger.new(o!("thread" => "InfluxWriter:http", "n_outstanding" => n_outstanding));
+                let thread_logger = logger.new(o!("thread" => "InfluxWriter:http", "n_outstanding" => n_outstanding)); // re `thread_logger` name: disambiguating for `logger` after thread closure
                 let client = Arc::clone(&client);
                 debug!(logger, "launching http thread");
                 let thread_res = thread::Builder::new().name(format!("inflx-http{}", n_outstanding)).spawn(move || {
@@ -462,7 +462,15 @@ impl InfluxWriter {
                                 'b: loop {
                                     n_tx += 1;
                                     match tx.try_send(resp.take().unwrap()) {
-                                        Ok(_) => return,
+                                        Ok(_) => {
+                                            if n_req > 0 {
+                                                info!(logger, "successfully recovered from failed request with retry";
+                                                      "n_req" => n_req,
+                                                      "n_tx" => n_tx,
+                                                      "elapsed" => %format_args!("{:?}", Instant::now() - start));
+                                            }
+                                            return
+                                        }
 
                                         Err(chan::TrySendError::Full(r)) => {
                                             let throttle = Duration::from_millis(1000) * n_tx;
