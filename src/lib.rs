@@ -3,28 +3,13 @@
 
 #![feature(test)]
 
-#[macro_use] extern crate slog;
-
+#[macro_use]
+extern crate slog;
 #[allow(unused_imports)]
-#[macro_use] extern crate money;
-
+#[macro_use]
+extern crate money;
+#[cfg(test)]
 extern crate test;
-extern crate influent;
-extern crate chrono;
-extern crate hyper;
-extern crate termion;
-extern crate sloggers;
-extern crate slog_term;
-extern crate slog_async;
-extern crate fnv;
-extern crate ordermap;
-extern crate decimal;
-extern crate uuid;
-extern crate hdrhistogram;
-extern crate smallvec;
-extern crate num;
-extern crate dirs;
-extern crate crossbeam_channel;
 #[cfg(feature = "zmq")]
 extern crate zmq;
 #[cfg(feature = "latency")]

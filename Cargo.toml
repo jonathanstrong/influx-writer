@@ -1,7 +1,8 @@
 [package]
 name = "logging"
-version = "0.4.7"
+version = "0.5.0"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
+edition = "2018"
 
 [[example]]
 name = "zmq-logger"
@@ -29,6 +30,7 @@ smallvec = "0.6"
 num = "0.1"
 dirs = "1"
 crossbeam-channel = "0.3"
+pretty_toa = "1.0.0"
 
 sloggers = { path = "../sloggers" }
 
@@ -41,8 +43,8 @@ pubsub = { path = "../pubsub", optional = true }
 [features]
 default = ["inlines"]
 no-thrash = []
-trace = []
-debug = []
+trace = ["slog/release_max_level_trace", "slog/max_level_trace"]
+debug = ["slog/release_max_level_debug", "slog/max_level_debug"]
 test = []
 localhost = []
 harrison = []

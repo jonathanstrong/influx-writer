@@ -1,4 +1,3 @@
-#![feature(duration_from_micros)]
 #![allow(unused)]
 
 extern crate logging;
