@@ -64,12 +64,16 @@ pub fn inanos(t: DateTime<Utc>) -> i64 {
 }
 
 //#[cfg(not(any(test, feature = "test")))]
-pub fn file_logger(path: &str, level: Severity) -> slog::Logger {
+pub fn file_logger<P: AsRef<std::path::Path>>(path: P, level: Severity) -> slog::Logger {
     let mut builder = FileLoggerBuilder::new(path);
-    builder.level(level);
-    builder.timezone(TimeZone::Utc);
-    builder.channel_size(CHANNEL_SIZE);
-    builder.build().unwrap()
+    builder.level(level)
+        .timezone(TimeZone::Utc)
+        .channel_size(CHANNEL_SIZE)
+        .rotate_size(1024 * 1024 * 1024)
+        .rotate_keep(1000)
+        .rotate_compress(true)
+        .source_location(sloggers::types::SourceLocation::ModuleAndLine);
+    builder.build().unwrap() // the sloggers impl can't actually fail (v0.3)
 }
 
 pub fn truncating_file_logger(path: &str, level: Severity) -> slog::Logger {

@@ -1,6 +1,6 @@
 [package]
 name = "logging"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 edition = "2018"
 
@@ -32,7 +32,8 @@ dirs = "1"
 crossbeam-channel = "0.3"
 pretty_toa = "1.0.0"
 
-sloggers = { path = "../sloggers" }
+sloggers = "0.3"
+#sloggers = { path = "../sloggers" }
 
 decimal = { path = "../decimal", version = "2" }
 
