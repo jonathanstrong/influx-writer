@@ -118,3 +118,21 @@ pub fn short_uuid(id: &Uuid) -> String {
         format!("{}", &id.to_string()[..8])
     }
 }
+
+#[allow(unused)]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn utc_nanos_round_trip() {
+        let utc = Utc::now();
+        let ns = inanos(utc);
+        let rt = nanos_utc(ns);
+        assert_eq!(utc, rt);
+        let utc = Utc.ymd(1970, 1, 1).and_hms(0, 0, 0);
+        let ns = inanos(utc);
+        let rt = nanos_utc(ns);
+        assert_eq!(utc, rt);
+    }
+}
