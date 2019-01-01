@@ -65,13 +65,17 @@ pub fn inanos(t: DateTime<Utc>) -> i64 {
 
 //#[cfg(not(any(test, feature = "test")))]
 pub fn file_logger<P: AsRef<std::path::Path>>(path: P, level: Severity) -> slog::Logger {
+    rotating_file_logger(path, level, true)
+}
+
+pub fn rotating_file_logger<P: AsRef<std::path::Path>>(path: P, level: Severity, compress: bool) -> slog::Logger {
     let mut builder = FileLoggerBuilder::new(path);
     builder.level(level)
         .timezone(TimeZone::Utc)
         .channel_size(CHANNEL_SIZE)
         .rotate_size(1024 * 1024 * 1024)
         .rotate_keep(1000)
-        .rotate_compress(true)
+        .rotate_compress(compress)
         .source_location(sloggers::types::SourceLocation::ModuleAndLine);
     builder.build().unwrap() // the sloggers impl can't actually fail (v0.3)
 }
