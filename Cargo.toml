@@ -56,3 +56,6 @@ disable-short-uuid = []
 warnings = []
 inlines = []
 latency = ["pubsub"]
+
+[profile.bench]
+lto = true

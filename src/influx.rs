@@ -1113,6 +1113,19 @@ mod tests {
     use super::*;
     use test::{black_box, Bencher};
 
+    #[bench]
+    fn write_one_million_rows_to_influx(b: &mut Bencher) {
+        let influx = InfluxWriter::new("localhost", "test", "log/influx.log", 8192);
+        let mut n = 0;
+        b.iter(|| {
+            for _ in 0..1_000_000 {
+                let time = influx.nanos(Utc::now());
+                n += 1;
+                measure!(influx, million, i(n), tm(time));
+            }
+        });
+    }
+
     #[test]
     fn it_uses_the_utc_shortcut_to_convert_a_datetime_utc() {
         const VERSION: &str = "0.3.90";
