@@ -1113,12 +1113,13 @@ mod tests {
     use super::*;
     use test::{black_box, Bencher};
 
+    #[ignore]
     #[bench]
-    fn write_one_million_rows_to_influx(b: &mut Bencher) {
+    fn measure_ten(b: &mut Bencher) {
         let influx = InfluxWriter::new("localhost", "test", "log/influx.log", 8192);
         let mut n = 0;
         b.iter(|| {
-            for _ in 0..1_000_000 {
+            for _ in 0..10 {
                 let time = influx.nanos(Utc::now());
                 n += 1;
                 measure!(influx, million, i(n), tm(time));
