@@ -1113,6 +1113,7 @@ mod tests {
     use super::*;
     use test::{black_box, Bencher};
 
+    #[ignore]
     #[bench]
     fn write_one_million_rows_to_influx(b: &mut Bencher) {
         let influx = InfluxWriter::new("localhost", "test", "log/influx.log", 8192);
