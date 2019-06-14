@@ -331,6 +331,8 @@ impl InfluxWriter {
         self.tx.clone()
     }
 
+    pub fn is_full(&self) -> bool { self.tx.is_full() }
+
     pub fn placeholder() -> Self {
         let (tx, _) = bounded(1024);
         Self {
