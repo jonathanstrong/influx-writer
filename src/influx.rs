@@ -353,7 +353,7 @@ impl InfluxWriter {
         let logger = logger.new(o!(
             "host" => host.to_string(),
             "db" => db.to_string()));
-        let (tx, rx): (Sender<Option<OwnedMeasurement>>, Receiver<Option<OwnedMeasurement>>) = bounded(1024);
+        let (tx, rx): (Sender<Option<OwnedMeasurement>>, Receiver<Option<OwnedMeasurement>>) = bounded(4096);
         let url =
             Url::parse_with_params(&format!("http://{}:8086/write", host),
                                    &[("db", db), ("precision", "ns")])
@@ -370,9 +370,9 @@ impl InfluxWriter {
             const MAX_PENDING: Duration = Duration::from_secs(3);
             const INITIAL_BUFFER_CAPACITY: usize = 32 * 32 * 32;
             const MAX_BACKLOG: usize = 512;
-            const MAX_OUTSTANDING_HTTP: usize = 32;
+            const MAX_OUTSTANDING_HTTP: usize = 64;
             const HB_EVERY: usize = 100_000;
-            const N_HTTP_ATTEMPTS: u32 = 5;
+            const N_HTTP_ATTEMPTS: u32 = 15;
 
             let client = Arc::new(Client::new());
 
