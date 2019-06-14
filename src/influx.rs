@@ -698,7 +698,7 @@ impl InfluxWriter {
                                     Err(_) => break 'rx
                                 }
                             }
-                            thread::sleep(Duration::from_millis(100));
+                            thread::sleep(Duration::from_millis(1));
                         }
                     }
 
