@@ -97,7 +97,7 @@ impl AsF64 for f32 { fn as_f64(x: Self) -> f64 { x as f64 } }
 /// use logging::influx::*;
 ///
 /// fn main() {
-///     let (tx, rx) = bounded(1024);
+///     let (tx, rx) = crossbeam_channel::bounded(1024);
 ///
 ///     // "shorthand" syntax
 ///
@@ -359,7 +359,6 @@ impl InfluxWriter {
                                    &[("db", db), ("precision", "ns")])
                 .expect("influx writer url should parse");
         let thread = thread::Builder::new().name(format!("mm:inflx:{}", db)).spawn(move || {
-            use std::collections::VecDeque;
             use std::time::*;
             use crossbeam_channel as chan;
 
@@ -441,7 +440,7 @@ impl InfluxWriter {
                     let logger = thread_logger;
                     debug!(logger, "preparing to send http request to influx"; "buf.len()" => buf.len());
                     let start = Instant::now();
-                    'a: for n_req in 0..N_HTTP_ATTEMPTS {
+                    for n_req in 0..N_HTTP_ATTEMPTS {
                         let throttle = Duration::from_secs(2) * n_req * n_req;
                         if n_req > 0 {
                             warn!(logger, "InfluxWriter http thread: pausing before next request";
@@ -462,7 +461,7 @@ impl InfluxWriter {
                                 debug!(logger, "server responded ok: 204 NoContent");
                                 buf.clear();
                                 let mut resp = Some(Ok(Resp { buf, took }));
-                                'b: loop {
+                                loop {
                                     n_tx += 1;
                                     match tx.try_send(resp.take().unwrap()) {
                                         Ok(_) => {
