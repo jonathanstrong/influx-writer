@@ -35,8 +35,8 @@ pretty_toa = "1.0.0"
 sloggers = "0.3"
 #sloggers = { path = "../sloggers" }
 
-#decimal = { path = "../decimal", version = "2" }
-decimal = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.3.x" }
+decimal = { path = "../decimal", version = "2" }
+#decimal = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.3.x" }
 
 #windows = { path = "../windows", version = "0.2" }
 money = { path = "../money", version = "0.3" }
