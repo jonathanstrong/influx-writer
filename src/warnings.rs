@@ -9,8 +9,6 @@ use std::fmt::{self, Display, Error as FmtError, Formatter};
 use std::io::{self, Write};
 use std::fs;
 
-#[cfg(feature = "zmq")]
-use zmq;
 use chrono::{DateTime, Utc};
 use termion::color::{self, Fg, Bg};
 use influent::measurement::{Measurement, Value as InfluentValue};
@@ -414,71 +412,6 @@ pub struct WarningsManager {
     thread: Option<JoinHandle<()>>
 }
 
-impl WarningsManager {
-    /// `measurement_name` is the name of the influxdb measurement
-    /// we will save log entries to.
-    ///
-    #[cfg(feature = "zmq")]
-    pub fn new(measurement_name: &'static str) -> Self {
-        let warnings = Arc::new(RwLock::new(VecDeque::new()));
-        let warnings_copy = warnings.clone();
-        let (tx, rx) = channel();
-        let mut buf = String::with_capacity(4096);
-        let ctx = zmq::Context::new();
-        let socket = influx::push(&ctx).unwrap();
-        let thread = thread::spawn(move || { 
-            let path = format!("var/log/warnings-manager-{}.log", measurement_name);
-            let logger = file_logger(&path, Severity::Info);
-            info!(logger, "entering loop");
-            loop {
-                if let Ok(msg) = rx.recv() {
-                    match msg {
-                        Warning::Terminate => {
-                            debug!(logger, "terminating");
-                            break;
-                        }
-
-                        Warning::Log { level, msg, kv, .. } => {
-                            debug!(logger, "new Warning::Debug arrived";
-                                   "msg" => &msg);
-                            let mut meas = kv.to_measurement(measurement_name);
-                            meas.add_field("msg", InfluentValue::String(msg.as_ref()));
-                            meas.add_tag("category", level.as_short_str());
-                            influx::serialize(&meas, &mut buf);
-                            let _ = socket.send_str(&buf, 0);
-                            buf.clear();
-                            // and don't push to warnings
-                            // bc it's debug
-                        }
-
-                        other => {
-                            debug!(logger, "new {} arrived", other.category_str();
-                                   "msg" => other.category_str());
-                            let rec = Record::new(other);
-                            {
-                                let m = rec.to_measurement(measurement_name);
-                                influx::serialize(&m, &mut buf);
-                                let _ = socket.send_str(&buf, 0);
-                                buf.clear();
-                            }
-                            if let Ok(mut lock) = warnings.write() {
-                                lock.push_front(rec);
-                                lock.truncate(N_WARNINGS);
-                            }
-                        }
-                    }
-                }
-            } 
-        });
-
-        WarningsManager {
-            warnings: warnings_copy,
-            thread: Some(thread),
-            tx
-        }
-    }
-}
-
 impl Drop for WarningsManager {
     fn drop(&mut self) {
         let _ = self.tx.send(Warning::Terminate);
@@ -488,126 +421,7 @@ impl Drop for WarningsManager {
     }
 }
 
-#[cfg(feature = "zmq")]
-#[allow(dead_code)]
-pub struct ZmqDrain<D>
-    where D: Drain,
-{
-    drain: D,
-    ctx: zmq::Context,
-    socket: zmq::Socket,
-    buf: Arc<Mutex<Vec<u8>>>
-}
-
-#[cfg(feature = "zmq")]
-impl<D> ZmqDrain<D> 
-    where D: Drain,
-{
-    pub fn new(drain: D) -> Self {
-        let _ = fs::create_dir("/tmp/mm");
-        let ctx = zmq::Context::new();
-        let socket = ctx.socket(zmq::PUB).unwrap();
-        socket.bind("ipc:///tmp/mm/log").expect("zmq publisher bind failed");
-        let buf = Arc::new(Mutex::new(Vec::with_capacity(4096)));
-
-        ZmqDrain {
-            drain,
-            ctx,
-            socket,
-            buf
-        }
-    }
-}
-
 const TIMESTAMP_FORMAT: &'static str = "%b %d %H:%M:%S%.3f";
-
-#[cfg(feature = "zmq")]
-impl<D> Drain for ZmqDrain<D> 
-    where D: Drain
-{
-    type Ok = D::Ok;
-    type Err = D::Err;
-
-    fn log(&self, record: &slog::Record, values: &OwnedKVList) -> Result<Self::Ok, Self::Err> {
-        {
-            let mut buf = self.buf.lock().unwrap();
-            let _ = write!(buf, "{time} {level}", 
-                time = Utc::now().format(TIMESTAMP_FORMAT),
-                level = record.level().as_short_str());
-            {
-                let mut thread_ser = ThreadSer(&mut buf);
-                let _ = record.kv().serialize(record, &mut thread_ser);
-                let _ = values.serialize(record, &mut thread_ser);
-            }
-
-            let _ = write!(buf, " {file:<20} {line:<5} {msg}",
-                           file = record.file(),
-                           line = record.line(),
-                           msg = record.msg());
-                
-            {
-                let mut kv_ser = KvSer(&mut buf);
-                // discarding any errors here...
-                let _ = record.kv().serialize(record, &mut kv_ser);
-                let _ = values.serialize(record, &mut kv_ser);
-            }
-
-            let _ = self.socket.send(&buf, 0);
-            buf.clear();
-        }
-        self.drain.log(record, values)
-    }
-}
-
-/// Can be used as a `Write` with `slog_term` and
-/// other libraries. 
-///
-#[cfg(feature = "zmq")]
-#[allow(dead_code)]
-pub struct ZmqIo {
-    ctx: zmq::Context,
-    socket: zmq::Socket,
-    buf: Vec<u8>
-}
-
-#[cfg(feature = "zmq")]
-impl ZmqIo {
-    pub fn new(addr: &str) -> Self {
-        let _ = fs::create_dir("/tmp/mm");
-        let ctx = zmq::Context::new();
-        let socket = ctx.socket(zmq::PUB).unwrap();
-        let addr = format!("ipc:///tmp/mm/{}", addr);
-        socket.bind(&addr).expect("zmq publisher bind failed");
-        let buf = Vec::with_capacity(4096);
-        ZmqIo { ctx, socket, buf }
-    }
-}
-
-#[cfg(feature = "zmq")]
-impl Write for ZmqIo {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.buf.write(buf)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        match self.buf.pop() {
-            Some(b'\n') => {
-                let _ = self.socket.send(&self.buf, 0);
-            }
-
-            Some(other) => {
-                self.buf.push(other);
-                let _ = self.socket.send(&self.buf, 0);
-            }
-
-            None => {
-                return Ok(());
-            }
-        }
-        self.buf.clear();
-        Ok(())
-    }
-}
 
 /// Serializes *only* KV pair with `key == "thread"`
 ///

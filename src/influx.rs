@@ -3,24 +3,16 @@
 
 use std::io::Read;
 use std::sync::Arc;
-//use std::sync::mpsc::{Sender, Receiver, channel, SendError};
 use crossbeam_channel::{Sender, Receiver, bounded, SendError};
 use std::{thread, mem};
 use std::time::*;
-use std::hash::BuildHasherDefault;
 use std::collections::VecDeque;
 
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
 use hyper::Url;
 use hyper::client::Client;
-use influent::measurement::{Measurement, Value};
-#[cfg(feature = "zmq")]
-use zmq;
-#[allow(unused_imports)]
 use chrono::{DateTime, Utc};
-use ordermap::OrderMap;
-use fnv::FnvHasher;
 use decimal::d128;
 use uuid::Uuid;
 use smallvec::SmallVec;
@@ -31,15 +23,9 @@ use super::{nanos, file_logger, LOG_LEVEL};
 #[cfg(feature = "warnings")]
 use warnings::Warning;
 
-pub use super::{dur_nanos, dt_nanos};
-
-pub type Map<K, V> = OrderMap<K, V, BuildHasherDefault<FnvHasher>>;
+pub use super::{dur_nanos, dt_nanos, measure};
 
 pub const INFLUX_WRITER_MAX_BUFFER: usize = 4096;
-
-pub fn new_map<K, V>(capacity: usize) -> Map<K, V> {
-    Map::with_capacity_and_hasher(capacity, Default::default())
-}
 
 /// Created this so I know what types can be passed through the
 /// `measure!` macro, which used to convert with `as i64` and
@@ -154,7 +140,7 @@ macro_rules! measure {
     (@kv v, $meas:ident, $k:expr) => { measure!(@ea tag, $meas, "version", $k) };
     (@kv $t:tt, $meas:ident, $k:tt) => { measure!(@ea $t, $meas, stringify!($k), measure!(@as_expr $k)) };
     (@ea tag, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
-    (@ea t, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, $v); };
+    (@ea t, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_tag($k, &$v); };
     (@ea int, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Integer(AsI64::as_i64($v))) };
     (@ea i, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Integer(AsI64::as_i64($v))) };
     (@ea float, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::influx::OwnedValue::Float(AsF64::as_f64($v))) };
@@ -816,76 +802,12 @@ fn it_checks_as_string_does_not_double_escape() {
     assert_eq!(escaped, format!("\"{}\"", raw).as_ref());
 }
 
-fn as_integer(i: &i64) -> String {
-    format!("{}i", i)
-}
-
-fn as_float(f: &f64) -> String {
-    f.to_string()
-}
-
 fn as_boolean(b: &bool) -> &str {
     if *b { "t" } else { "f" }
 }
 
 pub fn now() -> i64 {
     nanos(Utc::now()) as i64
-}
-
-/// Serialize the measurement into influx line protocol
-/// and append to the buffer.
-///
-/// # Examples
-///
-/// ```
-/// extern crate influent;
-/// extern crate logging;
-///
-/// use influent::measurement::{Measurement, Value};
-/// use std::string::String;
-/// use logging::influx::serialize;
-///
-/// fn main() {
-///     let mut buf = String::new();
-///     let mut m = Measurement::new("test");
-///     m.add_field("x", Value::Integer(1));
-///     serialize(&m, &mut buf);
-/// }
-///
-/// ```
-///
-pub fn serialize(measurement: &Measurement, line: &mut String) {
-    line.push_str(&escape(measurement.key));
-
-    for (tag, value) in measurement.tags.iter() {
-        line.push_str(",");
-        line.push_str(&escape(tag));
-        line.push_str("=");
-        line.push_str(&escape(value));
-    }
-
-    let mut was_spaced = false;
-
-    for (field, value) in measurement.fields.iter() {
-        line.push_str({if !was_spaced { was_spaced = true; " " } else { "," }});
-        line.push_str(&escape(field));
-        line.push_str("=");
-
-        match value {
-            &Value::String(ref s)  => line.push_str(&as_string(s)),
-            &Value::Integer(ref i) => line.push_str(&as_integer(i)),
-            &Value::Float(ref f)   => line.push_str(&as_float(f)),
-            &Value::Boolean(ref b) => line.push_str(as_boolean(b))
-        };
-    }
-
-    match measurement.timestamp {
-        Some(t) => {
-            line.push_str(" ");
-            line.push_str(&t.to_string());
-        }
-        _ => {}
-    }
 }
 
 /// Serializes an `&OwnedMeasurement` as influx line protocol into `line`.
@@ -1391,84 +1313,10 @@ mod tests {
             loop { if rx.recv().is_err() { break } }
         });
         b.iter(|| {
-            measure!(tx, test,
-                tag[color; "red"],
-                tag[mood => "playful"],
-                tag [ ticker => "xmr_btc" ],
-                float[ price => 1.2345 ],
-                float[ amount => 56.323],
-                int[n; 1],
-                time[now()]
-            );
+            measure!(tx, test, t(color, "red"), t(mood, "playful"),
+                t(ticker, "xmr_btc"), f(price, 1.2345), f(amount, 56.322),
+                i(n, 1), tm(now()));
         });
-    }
-
-    #[cfg(feature = "zmq")]
-    #[cfg(feature = "warnings")]
-    #[test]
-    #[ignore]
-    fn it_spawns_a_writer_thread_and_sends_dummy_measurement_to_influxdb() {
-        let ctx = zmq::Context::new();
-        let socket = push(&ctx).unwrap();
-        let (tx, rx) = bounded(1024);
-        let w = writer(tx.clone());
-        let mut buf = String::with_capacity(4096);
-        let mut meas = Measurement::new("rust_test");
-        meas.add_tag("a", "t");
-        meas.add_field("c", Value::Float(1.23456));
-        let now = now();
-        meas.set_timestamp(now);
-        serialize(&meas, &mut buf);
-        socket.send_str(&buf, 0).unwrap();
-        drop(w);
-    }
-
-    #[test]
-    fn it_serializes_a_measurement_in_place() {
-        let mut buf = String::with_capacity(4096);
-        let mut meas = Measurement::new("rust_test");
-        meas.add_tag("a", "b");
-        meas.add_field("c", Value::Float(1.0));
-        let now = now();
-        meas.set_timestamp(now);
-        serialize(&meas, &mut buf);
-        let ans = format!("rust_test,a=b c=1 {}", now);
-        assert_eq!(buf, ans);
-    }
-
-    #[test]
-    fn it_serializes_a_hard_to_serialize_message() {
-        let raw = r#"error encountered trying to send krkn order: Other("Failed to send http request: Other("Resource temporarily unavailable (os error 11)")")"#;
-        let mut buf = String::new();
-        let mut server_resp = String::new();
-        let mut m = Measurement::new("rust_test");
-        m.add_field("s", Value::String(&raw));
-        let now = now();
-        m.set_timestamp(now);
-        serialize(&m, &mut buf);
-        println!("{}", buf);
-        buf.push_str("\n");
-        let buf_copy = buf.clone();
-        buf.push_str(&buf_copy);
-        println!("{}", buf);
-
-        let url = Url::parse_with_params("http://localhost:8086/write", &[("db", "test"), ("precision", "ns")]).expect("influx writer url should parse");
-        let client = Client::new();
-        match client.post(url.clone())
-                    .body(&buf)
-                    .send() {
-
-            Ok(Response { status, .. }) if status == StatusCode::NoContent => {}
-
-            Ok(mut resp) =>  {
-                resp.read_to_string(&mut server_resp).unwrap();
-                panic!("{}", server_resp);
-            }
-
-            Err(why) => {
-                panic!(why)
-            }
-        }
     }
 
     #[bench]
