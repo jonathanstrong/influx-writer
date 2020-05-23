@@ -1,56 +1,33 @@
 [package]
-name = "logging"
-version = "0.5.2"
+name = "influx-writer"
+version = "0.6.0"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 edition = "2018"
 
-[[example]]
-name = "hist-interval"
-path = "examples/hist-interval.rs"
+[lib]
+name = "influx_writer"
+path = "src/lib.rs"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 hyper = "0.10"
-termion = "1.4.0"
-slog = "2.0.6"
+slog = "2"
 slog-term = "2"
 uuid = { version = "0.8", features = ["serde", "v4", "slog"] }
-hdrhistogram = "6"
 slog-async = "2"
 smallvec = "0.6"
-num = "0.1"
-dirs = "1"
 crossbeam-channel = "0.3"
 pretty_toa = "1.0.0"
 
-sloggers = "0.3"
-#sloggers = { path = "../sloggers" }
-
-#decimal = { path = "../decimal", version = "2" }
-#decimal = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.3.x" }
 decimal = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.3.x" }
 decimal-macros = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.3.x" }
 
-#windows = { path = "../windows", version = "0.2" }
-money = { path = "../money", version = "0.3" }
-pubsub = { path = "../pubsub", optional = true }
-
 [features]
-default = ["inlines"]
-no-thrash = []
+default = ["string-tags"]
 trace = ["slog/release_max_level_trace", "slog/max_level_trace"]
 debug = ["slog/release_max_level_debug", "slog/max_level_debug"]
-test = []
-localhost = []
-harrison = []
-washington = []
-scholes = []
-no-influx-buffer = []
-disable-short-uuid = []
-warnings = []
-inlines = []
-latency = ["pubsub"]
 string-tags = []
+unstable = []
 
 [profile.bench]
 lto = true
