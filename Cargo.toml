@@ -14,7 +14,7 @@ hyper = "0.10"
 termion = "1.4.0"
 slog = "2.0.6"
 slog-term = "2"
-uuid = { version = "0.6", features = ["serde", "v4", "nightly", "const_fn"] }
+uuid = { version = "0.8", features = ["serde", "v4", "slog"] }
 hdrhistogram = "6"
 slog-async = "2"
 smallvec = "0.6"
