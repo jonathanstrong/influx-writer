@@ -1,9 +1,9 @@
 //! Utilities to efficiently send data to influx
 //!
 
-#![cfg_attr(all(test, feature = "unstable"), feature(test))]
+#![feature(test)]
 
-#![cfg(all(test, feature = "unstable"))]
+#[cfg(test)]
 extern crate test;
 #[macro_use]
 extern crate slog;
@@ -73,11 +73,11 @@ impl AsF64 for f32 { fn as_f64(x: Self) -> f64 { x as f64 } }
 /// # Examples
 ///
 /// ```
-/// #![feature(try_from)]
-/// #[macro_use] extern crate influx_writer;
-/// extern crate decimal;
+/// #[macro_use]
+/// extern crate influx_writer;
 ///
-/// use std::sync::mpsc::channel;
+/// use influx_writer::{OwnedValue, OwnedMeasurement, AsI64};
+///
 /// use decimal::d128;
 ///
 /// fn main() {
@@ -85,7 +85,7 @@ impl AsF64 for f32 { fn as_f64(x: Self) -> f64 { x as f64 } }
 ///
 ///     // "shorthand" syntax
 ///
-///     measure!(tx, test, tag[color;"red"], int[n;1]);
+///     measure!(tx, test, t(color, "red"), i(n, 1));
 ///
 ///     let meas: OwnedMeasurement = rx.recv().unwrap();
 ///
@@ -93,17 +93,11 @@ impl AsF64 for f32 { fn as_f64(x: Self) -> f64 { x as f64 } }
 ///     assert_eq!(meas.get_tag("color"), Some("red"));
 ///     assert_eq!(meas.get_field("n"), Some(&OwnedValue::Integer(1)));
 ///
-///     // alternate syntax ...
-///
 ///     measure!(tx, test,
-///         tag [ one => "a" ],
-///         tag [ two => "b" ],
-///         int [ three => 2 ],
-///         float [ four => 1.2345 ],
-///         string [ five => String::from("d") ],
-///         bool [ six => true ],
-///         int [ seven => { 1 + 2 } ],
-///         time [ 1 ]
+///         t(one, "a"), t(two, "b"), i(three, 2),
+///         f(four, 1.2345), s(five, String::from("d")),
+///         b(six, true), i(seven, 1 + 2),
+///         tm(1)
 ///     );
 ///
 ///     let meas: OwnedMeasurement = rx.recv().unwrap();
@@ -118,12 +112,11 @@ impl AsF64 for f32 { fn as_f64(x: Self) -> f64 { x as f64 } }
 ///     // use the @make_meas flag to skip sending a measurement, instead merely
 ///     // creating it.
 ///
-///     let meas: OwnedMeasurement = measure!(@make_meas meas_only, tag[color; "red"], int[n; 1]);
+///     let meas: OwnedMeasurement = measure!(@make_meas meas_only, t(color, "red"), i(n, 1));
 ///
 ///     // each variant also has shorthand aliases
 ///
-///     let meas: OwnedMeasurement =
-///         measure!(@make_meas abcd, t[color; "red"], i[n; 1], d[price; d128::zero()]);
+///     let meas: OwnedMeasurement = measure!(@make_meas abcd, t(color, "red"), i(n, 1), d(price, d128::zero()));
 /// }
 /// ```
 ///
@@ -216,11 +209,12 @@ pub fn nanos_utc(t: i64) -> DateTime<Utc> {
 }
 
 #[derive(Clone, Debug)]
-pub struct Point<T, V> {
+struct Point<T, V> {
     pub time: T,
     pub value: V
 }
-pub struct DurationWindow {
+
+struct DurationWindow {
     pub size: Duration,
     pub mean: Duration,
     pub sum: Duration,
@@ -228,6 +222,7 @@ pub struct DurationWindow {
     pub items: VecDeque<Point<Instant, Duration>>
 }
 
+#[allow(dead_code)]
 impl DurationWindow {
     #[inline]
     pub fn update(&mut self, time: Instant, value: Duration) {
