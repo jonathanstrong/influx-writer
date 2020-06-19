@@ -1,12 +1,17 @@
 [package]
 name = "influx-writer"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 edition = "2018"
 
 [lib]
 name = "influx_writer"
 path = "src/lib.rs"
+
+[[example]]
+name = "write"
+path = "examples/write.rs"
+required-features = ["signal-hook"]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
@@ -18,6 +23,7 @@ slog-async = "2"
 smallvec = "0.6"
 crossbeam-channel = "0.3"
 pretty_toa = "1.0.0"
+signal-hook = { version = "0.1.15", optional = true }
 
 decimal = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.3.x" }
 decimal-macros = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.3.x" }

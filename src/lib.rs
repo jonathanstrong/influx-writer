@@ -369,12 +369,12 @@ impl InfluxWriter {
             const N_BUFFER_LINES: usize = 1024;
             const MAX_PENDING: Duration = Duration::from_secs(3);
             const INITIAL_BUFFER_CAPACITY: usize = 4096;
-            const INITIAL_BACKLOG: usize = 128;
             const MAX_BACKLOG: usize = 1024;
             const MAX_OUTSTANDING_HTTP: usize = 64;
             const DEBUG_HB_EVERY: usize = 1024 * 96;
             const INFO_HB_EVERY: usize = 1024 * 1024;
             const N_HTTP_ATTEMPTS: u32 = 15;
+            const INITIAL_BACKLOG: usize = MAX_OUTSTANDING_HTTP * 2;
 
             let client = Arc::new(Client::new());
 
@@ -398,7 +398,7 @@ impl InfluxWriter {
             let mut backlog: VecDeque<String> = VecDeque::with_capacity(INITIAL_BACKLOG);
 
             for _ in 0..INITIAL_BACKLOG {
-                spares.push_back(String::with_capacity(1024));
+                spares.push_back(String::with_capacity(INITIAL_BUFFER_CAPACITY));
             }
 
             struct Resp {
@@ -420,9 +420,11 @@ impl InfluxWriter {
             let mut count = 0;
             let mut extras = 0; // any new Strings we intro to the system
             let mut n_rcvd = 0;
+            let mut in_flight_buffer_bytes = 0;
             let mut last = Instant::now();
             let mut active: bool;
             let mut last_clear = Instant::now();
+            let mut last_memory_check = Instant::now();
             let mut loop_time = Instant::now();
 
             let n_out = |s: &VecDeque<String>, b: &VecDeque<String>, extras: usize| -> usize {
@@ -431,15 +433,22 @@ impl InfluxWriter {
 
             assert_eq!(n_out(&spares, &backlog, extras), 0);
 
-            let send = |mut buf: String, backlog: &mut VecDeque<String>, n_outstanding: usize| {
+            let count_allocated_memory = |spares: &VecDeque<String>, backlog: &VecDeque<String>, in_flight_buffer_bytes: &usize| -> usize {
+                spares.iter().map(|x| x.capacity()).sum::<usize>()
+                + backlog.iter().map(|x| x.capacity()).sum::<usize>()
+                + (*in_flight_buffer_bytes)
+            };
+
+            let send = |mut buf: String, backlog: &mut VecDeque<String>, n_outstanding: usize, in_flight_buffer_bytes: &mut usize| {
                 if n_outstanding >= MAX_OUTSTANDING_HTTP {
                     backlog.push_back(buf);
                     return
                 }
                 let url = url.clone(); // Arc would be faster, but `hyper::Client::post` consumes url
                 let tx = http_tx.clone();
-                let thread_logger = logger.new(o!("thread" => "InfluxWriter:http", "n_outstanding" => n_outstanding)); // re `thread_logger` name: disambiguating for `logger` after thread closure
+                let thread_logger = logger.new(o!("thread" => "InfluxWriter:http", "in flight req at spawn time" => n_outstanding)); // re `thread_logger` name: disambiguating for `logger` after thread closure
                 let client = Arc::clone(&client);
+                *in_flight_buffer_bytes = *in_flight_buffer_bytes + buf.capacity();
                 debug!(logger, "launching http thread");
                 let thread_res = thread::Builder::new().name(format!("inflx-http{}", n_outstanding)).spawn(move || {
                     let logger = thread_logger;
@@ -550,6 +559,18 @@ impl InfluxWriter {
             'event: loop {
                 loop_time = Instant::now();
                 active = false;
+
+                if loop_time - last_memory_check > Duration::from_secs(60) {
+                    let allocated_bytes = count_allocated_memory(&spares, &backlog, &in_flight_buffer_bytes);
+                    let allocated_mb = allocated_bytes as f64 / 1024.0 / 1024.0;
+                    info!(logger, "allocated memory: {:.1}MB", allocated_mb;
+                        "allocated bytes" => allocated_bytes,
+                        "in flight buffer bytes" => in_flight_buffer_bytes,
+                        "spares.len()" => spares.len(),
+                        "backlog.len()" => backlog.len(),
+                    );
+                    last_memory_check = loop_time;
+                }
                 match rx.recv() {
                     Ok(Some(mut meas)) => {
                         n_rcvd += 1;
@@ -557,21 +578,27 @@ impl InfluxWriter {
 
                         if n_rcvd % INFO_HB_EVERY == 0 {
                             let n_outstanding = n_out(&spares, &backlog, extras);
+                            let allocated_bytes = count_allocated_memory(&spares, &backlog, &in_flight_buffer_bytes);
+                            let allocated_mb = allocated_bytes as f64 / 1024.0 / 1024.0;
                             info!(logger, "rcvd {} measurements", n_rcvd.thousands_sep();
                                 "n_outstanding" => n_outstanding,
                                 "spares.len()" => spares.len(),
                                 "n_rcvd" => n_rcvd,
                                 "n_active_buf" => count,
                                 "db_health" => %format_args!("{:?}", db_health.mean),
+                                "allocated buffer memory" => %format_args!("{:.1}MB", allocated_mb),
                                 "backlog.len()" => backlog.len());
                         } else if n_rcvd % DEBUG_HB_EVERY == 0 {
                             let n_outstanding = n_out(&spares, &backlog, extras);
+                            let allocated_bytes = count_allocated_memory(&spares, &backlog, &in_flight_buffer_bytes);
+                            let allocated_mb = allocated_bytes as f64 / 1024.0 / 1024.0;
                             debug!(logger, "rcvd {} measurements", n_rcvd.thousands_sep();
                                 "n_outstanding" => n_outstanding,
                                 "spares.len()" => spares.len(),
                                 "n_rcvd" => n_rcvd,
                                 "n_active_buf" => count,
                                 "db_health" => %format_args!("{:?}", db_health.mean),
+                                "allocated buffer memory" => %format_args!("{:.1}MB", allocated_mb),
                                 "backlog.len()" => backlog.len());
                         }
 
@@ -623,7 +650,13 @@ impl InfluxWriter {
                                             }
                                         } else {
                                             extras += 1;
-                                            info!(logger, "allocating new buffer: zero spares avail"; "n_outstanding" => n_outstanding, "extras" => extras);
+                                            let allocated_bytes = count_allocated_memory(&spares, &backlog, &in_flight_buffer_bytes) + INITIAL_BUFFER_CAPACITY;
+                                            let allocated_mb = allocated_bytes as f64 / 1024.0 / 1024.0;
+                                            info!(logger, "allocating new buffer: zero spares avail";
+                                                "allocated buffer memory" => %format_args!("{:.1}MB", allocated_mb),
+                                                "n_outstanding" => n_outstanding,
+                                                "extras" => extras,
+                                            );
                                             String::with_capacity(INITIAL_BUFFER_CAPACITY)
                                         }
                                     }
@@ -632,7 +665,7 @@ impl InfluxWriter {
                                 //
                                 mem::swap(&mut buf, &mut next);
                                 let n_outstanding = n_out(&spares, &backlog, extras);
-                                send(next, &mut backlog, n_outstanding);
+                                send(next, &mut backlog, n_outstanding, &mut in_flight_buffer_bytes);
                                 last = loop_time;
                                 count
                             }
@@ -650,7 +683,7 @@ impl InfluxWriter {
                             let n_outstanding = n_out(&spares, &backlog, extras);
                             let mut placeholder = spares.pop_front().unwrap_or_else(String::new);
                             mem::swap(&mut buf, &mut placeholder);
-                            send(placeholder, &mut backlog, n_outstanding);
+                            send(placeholder, &mut backlog, n_outstanding, &mut in_flight_buffer_bytes);
                         }
                         let mut n_ok = 0;
                         let mut n_err = 0;
@@ -688,7 +721,7 @@ impl InfluxWriter {
                                        "spares.len()" => spares.len(),
                                        "n_rcvd" => n_rcvd,
                                        "n_outstanding" => n_outstanding);
-                                send(buf, &mut backlog, n_outstanding);
+                                send(buf, &mut backlog, n_outstanding, &mut in_flight_buffer_bytes);
                                 last_clear = loop_time;
                             }
 
@@ -696,6 +729,7 @@ impl InfluxWriter {
                                 match http_rx.try_recv() {
                                     Ok(Ok(Resp { buf, .. })) => {
                                         n_ok += 1;
+                                        in_flight_buffer_bytes = in_flight_buffer_bytes.saturating_sub(buf.capacity());
                                         if spares.len() <= INITIAL_BACKLOG {
                                             spares.push_back(buf); // needed so `n_outstanding` count remains accurate
                                         } else {
@@ -705,6 +739,7 @@ impl InfluxWriter {
                                     Ok(Err(Resp { buf, .. })) => {
                                         warn!(logger, "requeueing failed request"; "buf.len()" => buf.len());
                                         n_err += 1;
+                                        in_flight_buffer_bytes = in_flight_buffer_bytes.saturating_sub(buf.capacity());
                                         backlog.push_front(buf);
                                     }
                                     Err(chan::TryRecvError::Disconnected) => {
@@ -734,7 +769,7 @@ impl InfluxWriter {
                 if (n_outstanding < MAX_OUTSTANDING_HTTP || loop_time - last_clear > Duration::from_secs(60)) && healthy {
                     if let Some(queued) = backlog.pop_front() {
                         let n_outstanding = n_out(&spares, &backlog, extras);
-                        send(queued, &mut backlog, n_outstanding);
+                        send(queued, &mut backlog, n_outstanding, &mut in_flight_buffer_bytes);
                         active = true;
                     }
                 }
@@ -743,13 +778,17 @@ impl InfluxWriter {
                     match http_rx.try_recv() {
                         Ok(Ok(Resp { buf, took })) => {
                             db_health.add(loop_time, took);
+                            let in_flight_before = in_flight_buffer_bytes.clone();
+                            in_flight_buffer_bytes = in_flight_buffer_bytes.saturating_sub(buf.capacity());
                             if spares.len() <= INITIAL_BACKLOG {
                                 spares.push_back(buf);
                             } else {
                                 extras = extras.saturating_sub(1);
-                                info!(logger, "dropping buffer to reduce memory back to INITIAL_BACKLOG size";
+                                debug!(logger, "dropping buffer to reduce memory back to INITIAL_BACKLOG size";
                                     "spares.len()" => spares.len(),
                                     "extras" => extras,
+                                    "in flight before" => in_flight_before,
+                                    "in in_flight_buffer_bytes" => in_flight_buffer_bytes,
                                 );
                             }
 
@@ -759,6 +798,7 @@ impl InfluxWriter {
 
                         Ok(Err(Resp { buf, took })) => {
                             db_health.add(loop_time, took);
+                            in_flight_buffer_bytes = in_flight_buffer_bytes.saturating_sub(buf.capacity());
                             backlog.push_front(buf);
                             active = true;
                         }
