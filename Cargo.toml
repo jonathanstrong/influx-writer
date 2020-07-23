@@ -1,6 +1,6 @@
 [package]
 name = "influx-writer"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 edition = "2018"
 
@@ -34,6 +34,15 @@ trace = ["slog/release_max_level_trace", "slog/max_level_trace"]
 debug = ["slog/release_max_level_debug", "slog/max_level_debug"]
 string-tags = []
 unstable = []
+# tests that authenticated requests are accepted by influxdb server
+#
+# setup: 
+#
+# - create database "auth_test"
+# - create user "auth_test_user" with password "hot dog" grant permissions
+#   to write to "auth_test" database
+#
+auth-tests = []
 
 [profile.bench]
 lto = true

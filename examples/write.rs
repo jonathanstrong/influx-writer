@@ -20,7 +20,6 @@ fn main() {
     signal_hook::flag::register(signal_hook::SIGTERM, Arc::clone(&term)).unwrap();
     signal_hook::flag::register(signal_hook::SIGQUIT, Arc::clone(&term)).unwrap();
 
-
     let decorator = slog_term::TermDecorator::new().stdout().force_color().build();
     let drain = slog_term::FullFormat::new(decorator).use_utc_timestamp().build().fuse();
     let drain = slog_async::Async::new(drain).chan_size(1024 * 64).thread_name("recv".into()).build().fuse();
@@ -28,7 +27,7 @@ fn main() {
 
     let logger = root.new(o!("thread" => "main"));
 
-    let influx = InfluxWriter::with_logger("localhost", "test", &root);
+    let influx = InfluxWriter::with_logger_and_opt_creds("localhost", "test", None, &root);
 
     let mut n = 0;
 
