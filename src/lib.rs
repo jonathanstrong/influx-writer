@@ -382,7 +382,7 @@ impl InfluxWriter {
             Url::parse_with_params(&format!("http://{}:8086/write", host),
                                    &[("db", db), ("precision", "ns")])
                 .expect("influx writer url should parse");
-        let thread = thread::Builder::new().name(format!("mm:inflx:{}", db)).spawn(move || {
+        let thread = thread::Builder::new().name(format!("inflx:{}", db)).spawn(move || {
             use std::time::*;
             use crossbeam_channel as chan;
 
