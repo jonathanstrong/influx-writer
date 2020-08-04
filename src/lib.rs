@@ -847,8 +847,7 @@ impl InfluxWriter {
                     thread::sleep(Duration::new(0, 1))
                 }
             }
-            info!(logger, "waiting 1s before exiting thread");
-            thread::sleep(Duration::from_secs(1));
+            thread::sleep(Duration::from_millis(10));
         }).unwrap();
 
         InfluxWriter {
