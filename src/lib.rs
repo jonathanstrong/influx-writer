@@ -367,7 +367,6 @@ impl InfluxWriter {
         }
     }
 
-    #[deprecated(since = "0.9.0", note = "replaced by with_logger_and_opt_creds")]
     #[allow(unused_assignments)]
     pub fn with_logger(host: &str, db: &str, logger: &Logger) -> Self {
         Self::with_logger_and_opt_creds(host, db, None, logger)
