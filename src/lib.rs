@@ -583,7 +583,7 @@ impl InfluxWriter {
                 loop_time = Instant::now();
                 active = false;
 
-                if loop_time - last_memory_check > Duration::from_secs(60) {
+                if loop_time - last_memory_check > Duration::from_secs(300) {
                     let allocated_bytes = count_allocated_memory(&spares, &backlog, &in_flight_buffer_bytes);
                     let allocated_mb = allocated_bytes as f64 / 1024.0 / 1024.0;
                     info!(logger, "allocated memory: {:.1}MB", allocated_mb;
