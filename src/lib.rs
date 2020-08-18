@@ -140,6 +140,13 @@ macro_rules! measure {
     (@ea u, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::OwnedValue::Uuid($v)) };
     (@ea b, $meas:ident, $k:expr, $v:expr) => { $meas = $meas.add_field($k, $crate::OwnedValue::Boolean(bool::from($v))) };
 
+    (@ea D, $meas:ident, $k:expr, $v:expr) => { 
+        match $v {
+            Some(v) => { $meas = $meas.add_field($k, $crate::OwnedValue::D128(v)) }
+            None => {}
+        }
+    };
+
     (@as_expr $e:expr) => {$e};
 
     (@count_tags) => {0usize};
