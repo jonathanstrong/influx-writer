@@ -10,10 +10,11 @@ extern crate slog;
 
 use std::io::Read;
 use std::sync::Arc;
-use crossbeam_channel::{Sender, Receiver, bounded, SendError};
 use std::{thread, mem};
 use std::time::*;
 use std::collections::VecDeque;
+use std::convert::TryInto;
+use crossbeam_channel::{Sender, Receiver, bounded, SendError};
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
 use hyper::Url;
@@ -42,17 +43,19 @@ pub trait AsI64 {
     fn as_i64(x: Self) -> i64;
 }
 
-impl AsI64 for i64 { fn as_i64(x: Self) -> i64 { x } }
-impl AsI64 for i32 { fn as_i64(x: Self) -> i64 { x as i64 } }
-impl AsI64 for u32 { fn as_i64(x: Self) -> i64 { x as i64 } }
-impl AsI64 for u64 { fn as_i64(x: Self) -> i64 { x as i64 } }
-impl AsI64 for usize { fn as_i64(x: Self) -> i64 { x as i64 } }
-impl AsI64 for f64 { fn as_i64(x: Self) -> i64 { x as i64 } }
-impl AsI64 for f32 { fn as_i64(x: Self) -> i64 { x as i64 } }
-impl AsI64 for u16 { fn as_i64(x: Self) -> i64 { x as i64 } }
-impl AsI64 for i16 { fn as_i64(x: Self) -> i64 { x as i64 } }
-impl AsI64 for u8 { fn as_i64(x: Self) -> i64 { x as i64 } }
-impl AsI64 for i8 { fn as_i64(x: Self) -> i64 { x as i64 } }
+impl AsI64 for i64 { fn as_i64(x: Self) -> i64      { x } }
+impl AsI64 for i32 { fn as_i64(x: Self) -> i64      { x as i64 } }
+impl AsI64 for u32 { fn as_i64(x: Self) -> i64      { x as i64 } }
+impl AsI64 for u64 { fn as_i64(x: Self) -> i64      { x.try_into().unwrap_or(-999) } }
+impl AsI64 for usize { fn as_i64(x: Self) -> i64    { x.try_into().unwrap_or(-999) } }
+impl AsI64 for i128 { fn as_i64(x: Self) -> i64     { x.try_into().unwrap_or(-999) } }
+impl AsI64 for u128 { fn as_i64(x: Self) -> i64     { x.try_into().unwrap_or(-999) } }
+impl AsI64 for f64 { fn as_i64(x: Self) -> i64      { x as i64 } }
+impl AsI64 for f32 { fn as_i64(x: Self) -> i64      { x as i64 } }
+impl AsI64 for u16 { fn as_i64(x: Self) -> i64      { x as i64 } }
+impl AsI64 for i16 { fn as_i64(x: Self) -> i64      { x as i64 } }
+impl AsI64 for u8 { fn as_i64(x: Self) -> i64       { x as i64 } }
+impl AsI64 for i8 { fn as_i64(x: Self) -> i64       { x as i64 } }
 
 /// Created this so I know what types can be passed through the
 /// `measure!` macro, which used to convert with `as i64` and
