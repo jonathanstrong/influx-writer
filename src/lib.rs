@@ -572,24 +572,35 @@ impl InfluxWriter {
             };
 
             let next = |prev: usize, m: &OwnedMeasurement, buf: &mut String, loop_time: Instant, last: Instant| -> Result<usize, usize> {
-                match prev {
+                let prev_length: usize;
+                let ret = match prev {
                     0 if N_BUFFER_LINES > 0 => {
+                        prev_length = buf.len();
                         serialize_owned(m, buf);
                         Ok(1)
                     }
 
                     n if n < N_BUFFER_LINES && loop_time - last < MAX_PENDING => {
                         buf.push_str("\n");
+                        prev_length = buf.len();
                         serialize_owned(m, buf);
                         Ok(n + 1)
                     }
 
                     n => {
                         buf.push_str("\n");
+                        prev_length = buf.len();
                         serialize_owned(m, buf);
                         Err(n + 1)
                     }
-                }
+                };
+
+                trace!(logger, "serialized measurement";
+                    "serialied line protocol" => %(&buf[prev_length..]),
+                    "measurement" => %m.key,
+                );
+
+                ret
             };
 
             'event: loop {
