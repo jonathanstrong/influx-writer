@@ -33,6 +33,8 @@ use pretty_toa::ThousandsSep;
 /// previously `-999.0` had been used.
 pub const SKIP_NAN_VALUES: bool = true;
 
+pub const DROP_DEADLINE: Duration = Duration::from_secs(30);
+
 pub type Credentials = hyper::header::Authorization<hyper::header::Basic>;
 
 /// Created this so I know what types can be passed through the
@@ -741,6 +743,16 @@ impl InfluxWriter {
                                     "elapsed" => %format_args!("{:?}", loop_time - start));
                                 break 'event
                             }
+
+                            if loop_time.saturating_duration_since(start) > DROP_DEADLINE {
+                                crit!(logger, "drop deadline exceeded! commencing dirty exit :( ";
+                                    "elapsed" => ?(loop_time.saturating_duration_since(start)),
+                                    "n outstanding" => n_outstanding,
+                                    "backlog.len()" => backlog.len(),
+                                );
+                                break 'event
+                            }
+
                             if loop_time - hb > Duration::from_secs(5) {
                                 info!(logger, "InfluxWriter still clearing backlog ..";
                                       "n_outstanding" => n_outstanding,
