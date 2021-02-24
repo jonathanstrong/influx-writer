@@ -1,8 +1,13 @@
 [package]
 name = "influx-writer"
-version = "0.13.0"
+version = "0.14.0"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 edition = "2018"
+description = "opinionated influxdb client"
+publish = ["mmcxi"]
+license = "all rights reserved"
+repository = "https://git.mmcxi.com/jstrong/influx-writer.git"
+exclude = ["justfile"]
 
 [lib]
 name = "influx_writer"
