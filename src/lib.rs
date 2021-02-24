@@ -1496,7 +1496,7 @@ mod tests {
             }
 
             Err(why) => {
-                panic!(why)
+                panic!("{}", why)
             }
         }
     }
