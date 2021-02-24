@@ -25,8 +25,8 @@ crossbeam-channel = "0.3"
 pretty_toa = "1.0.0"
 signal-hook = { version = "0.1.15", optional = true }
 
-decimal = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.4.x" }
-decimal-macros = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.4.x" }
+decimal = { version = "2.4.2", registry = "mmcxi" }
+decimal-macros = { version = "0.3", registry = "mmcxi" }
 
 [features]
 default = ["string-tags"]
