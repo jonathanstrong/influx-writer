@@ -1,6 +1,6 @@
 [package]
 name = "influx-writer"
-version = "0.16.0"
+version = "0.17.0"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 edition = "2018"
 description = "opinionated influxdb client"
@@ -23,7 +23,7 @@ chrono = { version = "0.4", features = ["serde"] }
 hyper = "0.10"
 slog = "2"
 slog-term = "2"
-uuid = { version = "0.7", features = ["serde", "v4", "slog"] }
+uuid = { version = "0.8", features = ["serde", "v4", "slog"] }
 slog-async = "2"
 smallvec = "0.6"
 crossbeam-channel = "0.3"
