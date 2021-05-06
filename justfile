@@ -7,6 +7,9 @@ cargo +args='':
 check +args='':
     @just cargo check {{args}}
 
+bench +args='':
+    @just cargo bench {{args}}
+
 build name +args='':
     @just cargo build --bin {{name}} {{args}}
 
