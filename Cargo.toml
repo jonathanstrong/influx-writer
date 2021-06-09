@@ -1,6 +1,6 @@
 [package]
 name = "influx-writer"
-version = "0.18.1"
+version = "0.18.2"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 edition = "2018"
 description = "opinionated influxdb client"
