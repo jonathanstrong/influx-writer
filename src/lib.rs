@@ -302,7 +302,6 @@ impl Default for InfluxWriter {
 
 impl Clone for InfluxWriter {
     fn clone(&self) -> Self {
-        debug_assert!(self.thread.is_some());
         let thread = self.thread.as_ref().map(|x| Arc::clone(x));
         InfluxWriter {
             host: self.host.to_string(),
@@ -322,7 +321,12 @@ impl InfluxWriter {
     ///
     #[inline]
     pub fn send(&self, m: OwnedMeasurement) -> Result<(), SendError<Option<OwnedMeasurement>>> {
-        self.tx.send(Some(m))
+        //if self.thread.is_none() {
+        //    let _ = self.tx.try_send(Some(m));
+        //    Ok(())
+        //} else {
+            self.tx.send(Some(m))
+        //}
     }
 
     #[inline]
@@ -354,14 +358,19 @@ impl InfluxWriter {
     #[inline]
     pub fn is_full(&self) -> bool { self.tx.is_full() }
 
+    /// provides a shell interface that immediately drops measurements sent to it
     pub fn placeholder() -> Self {
-        let (tx, _) = bounded(1024);
+        let (tx, _) = bounded(1);
         Self {
             host: String::new(),
             db: String::new(),
             tx,
             thread: None,
         }
+    }
+
+    pub fn is_placeholder(&self) -> bool {
+        self.thread.is_none() && self.host == ""
     }
 
     pub fn new(host: &str, db: &str) -> Self {
@@ -1176,6 +1185,57 @@ mod tests {
     use super::*;
     #[cfg(feature = "unstable")]
     use test::{black_box, Bencher};
+
+
+    #[cfg(feature = "unstable")]
+    #[bench]
+    fn send_to_disconnected_channel(b: &mut Bencher) {
+        let (tx, _): (Sender<Option<OwnedMeasurement>>, Receiver<Option<OwnedMeasurement>>) = bounded(1);
+        let time = now();
+        b.iter(|| {
+            const VERSION: &str = "1.0.0";
+            let color = "red";
+            let m = measure!(@make_meas test, i(n, 1), t(color), v(VERSION), tm(time));
+            tx.send(Some(m))
+        })
+    }
+
+    #[cfg(feature = "unstable")]
+    #[bench]
+    fn try_send_to_disconnected_channel(b: &mut Bencher) {
+        let (tx, _): (Sender<Option<OwnedMeasurement>>, Receiver<Option<OwnedMeasurement>>) = bounded(1);
+        let time = now();
+        b.iter(|| {
+            const VERSION: &str = "1.0.0";
+            let color = "red";
+            let m = measure!(@make_meas test, i(n, 1), t(color), v(VERSION), tm(time));
+            tx.try_send(Some(m))
+        })
+    }
+
+    #[cfg(feature = "unstable")]
+    #[bench]
+    fn send_to_disconnected_channel_via_placeholder(b: &mut Bencher) {
+        let time = now();
+        let influx = InfluxWriter::placeholder();
+        b.iter(|| {
+            const VERSION: &str = "1.0.0";
+            let color = "red";
+            measure!(influx, test, i(n, 1), t(color), v(VERSION), tm(time));
+        })
+    }
+
+    #[cfg(feature = "unstable")]
+    #[bench]
+    fn send_to_connected_channel_via_measure(b: &mut Bencher) {
+        let time = now();
+        let influx = InfluxWriter::new("localhost", "test");
+        b.iter(|| {
+            const VERSION: &str = "1.0.0";
+            let color = "red";
+            measure!(influx, bench, i(n, 1), t(color), v(VERSION), tm(time));
+        })
+    }
 
     #[ignore]
     #[cfg(feature = "unstable")]

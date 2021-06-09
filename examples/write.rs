@@ -16,9 +16,9 @@ const N_PER: usize = 567;
 fn main() {
     let start = Instant::now();
     let term = Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register(signal_hook::SIGINT, Arc::clone(&term)).unwrap();
-    signal_hook::flag::register(signal_hook::SIGTERM, Arc::clone(&term)).unwrap();
-    signal_hook::flag::register(signal_hook::SIGQUIT, Arc::clone(&term)).unwrap();
+    signal_hook::flag::register(signal_hook::consts::signal::SIGINT, Arc::clone(&term)).unwrap();
+    signal_hook::flag::register(signal_hook::consts::signal::SIGTERM, Arc::clone(&term)).unwrap();
+    signal_hook::flag::register(signal_hook::consts::signal::SIGQUIT, Arc::clone(&term)).unwrap();
 
     let decorator = slog_term::TermDecorator::new().stdout().force_color().build();
     let drain = slog_term::FullFormat::new(decorator).use_utc_timestamp().build().fuse();
