@@ -25,7 +25,7 @@ slog = "2"
 slog-term = "2"
 uuid = { version = "0.8", features = ["serde", "v4", "slog"] }
 slog-async = "2"
-smallvec = "0.6"
+smallvec = "1.6"
 crossbeam-channel = "0.5"
 pretty_toa = "1.0.0"
 signal-hook = { version = "0.3.8", optional = true }
