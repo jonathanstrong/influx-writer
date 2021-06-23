@@ -158,15 +158,13 @@ macro_rules! measure {
         }
     };
     (@ea I, $meas:ident, $k:expr, $v:expr) => { 
-        match $v {
-            Some(v) => { $meas = $meas.add_field($k, $crate::OwnedValue::Integer(v)) }
-            None => {}
+        if $v.is_some() {
+            $meas = $meas.add_field($k, $crate::OwnedValue::Integer(AsI64::as_i64($v.unwrap())));
         }
     };
-    (@ea F, $meas:ident, $k:expr, $v:expr) => { 
-        match $v {
-            Some(v) => { $meas = $meas.add_field($k, $crate::OwnedValue::Float(v)) }
-            None => {}
+    (@ea F, $meas:ident, $k:expr, $v:expr) => {
+        if $v.is_some() {
+            $meas = $meas.add_field($k, $crate::OwnedValue::Float(AsF64::as_f64($v.unwrap())));
         }
     };
     // (@ea T, $meas:ident, $k:expr, $v:expr) => { 
@@ -1225,11 +1223,13 @@ mod tests {
 
     #[test]
     fn check_uppercase_shorthands_on_optional_field_and_tag_values() {
+        let e: Option<i64> = None;
+        let h: Option<f64> = None;
         let meas = measure!(@make_meas test,
             //T(a, Some("one")), T(b, None), t(c, "three"),
             S(a, Some("one".to_string())), S(b, None), s(c, "three".to_string()),
-            I(d, Some(4)), I(e, None), i(f, 6),
-            F(g, Some(7.0)), F(h, None), f(i, 9.0),
+            I(d, Some(4)), I(e), i(f, 6),
+            F(g, Some(7.0)), F(h), f(i, 9.0),
         );
         assert_eq!(meas.get_field("a").unwrap(), &OwnedValue::String("one".to_string()));
         assert!(meas.get_field("b").is_none());
