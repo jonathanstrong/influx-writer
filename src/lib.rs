@@ -157,6 +157,43 @@ macro_rules! measure {
             None => {}
         }
     };
+    (@ea I, $meas:ident, $k:expr, $v:expr) => { 
+        match $v {
+            Some(v) => { $meas = $meas.add_field($k, $crate::OwnedValue::Integer(v)) }
+            None => {}
+        }
+    };
+    (@ea F, $meas:ident, $k:expr, $v:expr) => { 
+        match $v {
+            Some(v) => { $meas = $meas.add_field($k, $crate::OwnedValue::Float(v)) }
+            None => {}
+        }
+    };
+    // (@ea T, $meas:ident, $k:expr, $v:expr) => { 
+    //     let maybe_v: Option<
+    //     match $v {
+    //         Some(v) => { $meas = $meas.add_tag($k, v) }
+    //         None => {}
+    //     }
+    // };
+    (@ea U, $meas:ident, $k:expr, $v:expr) => { 
+        match $v {
+            Some(v) => { $meas = $meas.add_field($k, $crate::OwnedValue::Uuid(v)) }
+            None => {}
+        }
+    };
+    (@ea B, $meas:ident, $k:expr, $v:expr) => { 
+        match $v {
+            Some(v) => { $meas = $meas.add_field($k, $crate::OwnedValue::Boolean(v)) }
+            None => {}
+        }
+    };
+    (@ea S, $meas:ident, $k:expr, $v:expr) => { 
+        match $v {
+            Some(v) => { $meas = $meas.add_field($k, $crate::OwnedValue::String(v)) }
+            None => {}
+        }
+    };
 
     (@as_expr $e:expr) => {$e};
 
@@ -1186,6 +1223,26 @@ mod tests {
     #[cfg(feature = "unstable")]
     use test::{black_box, Bencher};
 
+    #[test]
+    fn check_uppercase_shorthands_on_optional_field_and_tag_values() {
+        let meas = measure!(@make_meas test,
+            //T(a, Some("one")), T(b, None), t(c, "three"),
+            S(a, Some("one".to_string())), S(b, None), s(c, "three".to_string()),
+            I(d, Some(4)), I(e, None), i(f, 6),
+            F(g, Some(7.0)), F(h, None), f(i, 9.0),
+        );
+        assert_eq!(meas.get_field("a").unwrap(), &OwnedValue::String("one".to_string()));
+        assert!(meas.get_field("b").is_none());
+        assert_eq!(meas.get_field("c").unwrap(), &OwnedValue::String("three".to_string()));
+
+        assert_eq!(meas.get_field("d").unwrap(), &OwnedValue::Integer(4));
+        assert!(meas.get_field("e").is_none());
+        assert_eq!(meas.get_field("f").unwrap(), &OwnedValue::Integer(6));
+
+        assert_eq!(meas.get_field("g").unwrap(), &OwnedValue::Float(7.0));
+        assert!(meas.get_field("h").is_none());
+        assert_eq!(meas.get_field("i").unwrap(), &OwnedValue::Float(9.0));
+    }
 
     #[cfg(feature = "unstable")]
     #[bench]
