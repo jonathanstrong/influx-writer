@@ -1,9 +1,9 @@
 //! Utilities to efficiently send data to influx
 //!
 
-#![feature(test)]
+#![cfg_attr(feature = "unstable", feature(test))]
 
-#[cfg(test)]
+#[cfg(all(feature = "unstable", test))]
 extern crate test;
 #[macro_use]
 extern crate slog;
