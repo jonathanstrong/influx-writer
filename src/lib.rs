@@ -1149,6 +1149,16 @@ impl OwnedMeasurement {
         }
     }
 
+    /// manually change the `key` field, or measurement name, to any
+    /// value. useful for building a measurement with the `measure!`
+    /// macro, then changing the measurement name to a dynamic value
+    /// later. it is not possible to use `measure!` to set the key
+    /// field to be the inner value of a variable name.
+    pub fn set_measurement_name(mut self, key: &'static str) -> Self {
+        self.key = key;
+        self
+    }
+
     /// Unusual consuming `self` signature because primarily used by
     /// the `measure!` macro.
     #[cfg(not(feature = "string-tags"))]
@@ -1220,6 +1230,16 @@ mod tests {
     use super::*;
     #[cfg(feature = "unstable")]
     use test::{black_box, Bencher};
+
+    #[test]
+    fn use_set_measurement_name_to_change_key_field_to_dynamic_value() {
+        let meas_name = "abcd";
+        let color = "red";
+        let mut meas = measure!(@make_meas meas_name, t(color), i(n, 1), tm(now()));
+        assert_eq!(meas.key, "meas_name");
+        meas = meas.set_measurement_name(meas_name);
+        assert_eq!(meas.key, "abcd");
+    }
 
     #[test]
     fn check_uppercase_shorthands_on_optional_field_and_tag_values() {
