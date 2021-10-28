@@ -1,6 +1,6 @@
 [package]
 name = "influx-writer"
-version = "0.19.2"
+version = "0.19.3"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 edition = "2018"
 description = "opinionated influxdb client"
@@ -47,7 +47,8 @@ unstable = []
 # - create user "auth_test_user" with password "hot dog" grant permissions
 #   to write to "auth_test" database
 #
-auth-tests = []
+auth-tests = ["http-tests"]
+http-tests = []
 
 [profile.bench]
 lto = true

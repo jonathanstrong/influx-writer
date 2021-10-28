@@ -1366,7 +1366,7 @@ mod tests {
             }
         }
 
-        let a = A { influx: InfluxWriter::default() };
+        let a = A { influx: InfluxWriter::placeholder() };
 
         a.f();
     }
@@ -1596,6 +1596,7 @@ mod tests {
         })
     }
 
+    #[cfg(feature = "http-tests")]
     #[test]
     fn it_serializes_a_hard_to_serialize_message_from_owned() {
         let raw = r#"error encountered trying to send krkn order: Other("Failed to send http request: Other("Resource temporarily unavailable (os error 11)")")"#;
