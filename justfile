@@ -30,7 +30,11 @@ redoc +args='':
     @just cargo doc {{args}}
 
 publish +args='':
+    test "$(echo `git status --porcelain` | wc -c)" -eq "1" # Error: clean git status required
+    git push
+    git push --tags
     @just cargo publish --registry mmcxi {{args}}
+    rm -rf target/package
 
 update +args='':
     @just cargo update {{args}}
