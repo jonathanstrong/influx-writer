@@ -33,7 +33,7 @@ use pretty_toa::ThousandsSep;
 /// previously `-999.0` had been used.
 pub const SKIP_NAN_VALUES: bool = true;
 
-pub const DROP_DEADLINE: Duration = Duration::from_secs(30);
+pub const DROP_DEADLINE: Duration = Duration::from_secs(120);
 
 pub type Credentials = hyper::header::Authorization<hyper::header::Basic>;
 
@@ -450,14 +450,14 @@ impl InfluxWriter {
             #[cfg(feature = "no-influx-buffer")]
             const N_BUFFER_LINES: usize = 0;
 
-            const N_BUFFER_LINES: usize = 1024;
+            const N_BUFFER_LINES: usize = 4096;
             const MAX_PENDING: Duration = Duration::from_secs(3);
-            const INITIAL_BUFFER_CAPACITY: usize = 4096;
-            const MAX_BACKLOG: usize = 1024;
-            const MAX_OUTSTANDING_HTTP: usize = 64;
+            const INITIAL_BUFFER_CAPACITY: usize = 8192;
+            const MAX_BACKLOG: usize = 1024 * 16;
+            const MAX_OUTSTANDING_HTTP: usize = 512;
             const DEBUG_HB_EVERY: usize = 1024 * 96;
             const INFO_HB_EVERY: usize = 1024 * 1024;
-            const N_HTTP_ATTEMPTS: u32 = 15;
+            const N_HTTP_ATTEMPTS: u32 = 16;
             const INITIAL_BACKLOG: usize = MAX_OUTSTANDING_HTTP * 2;
 
             let client = Arc::new(Client::new());
