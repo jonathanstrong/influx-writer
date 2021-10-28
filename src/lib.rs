@@ -649,7 +649,7 @@ impl InfluxWriter {
                 if loop_time - last_memory_check > Duration::from_secs(300) {
                     let allocated_bytes = count_allocated_memory(&spares, &backlog, &in_flight_buffer_bytes);
                     let allocated_mb = allocated_bytes as f64 / 1024.0 / 1024.0;
-                    info!(logger, "InfluxWriter: allocated memory: {:.1}MB", allocated_mb;
+                    debug!(logger, "InfluxWriter: allocated memory: {:.1}MB", allocated_mb;
                         "allocated bytes" => allocated_bytes,
                         "in flight buffer bytes" => in_flight_buffer_bytes,
                         "spares.len()" => spares.len(),
@@ -742,7 +742,7 @@ impl InfluxWriter {
                                             extras += 1;
                                             let allocated_bytes = count_allocated_memory(&spares, &backlog, &in_flight_buffer_bytes) + INITIAL_BUFFER_CAPACITY;
                                             let allocated_mb = allocated_bytes as f64 / 1024.0 / 1024.0;
-                                            info!(logger, "InfluxWriter: allocating new buffer: zero spares avail";
+                                            debug!(logger, "InfluxWriter: allocating new buffer: zero spares avail";
                                                 "total pts written" => n_pts.thousands_sep(),
                                                 "allocated buffer memory" => %format_args!("{:.1}MB", allocated_mb),
                                                 "n_outstanding" => n_outstanding,
