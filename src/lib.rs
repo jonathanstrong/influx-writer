@@ -7,6 +7,8 @@
 extern crate test;
 #[macro_use]
 extern crate slog;
+#[macro_use]
+extern crate hyper;
 
 use std::io::Read;
 use std::sync::Arc;
@@ -17,6 +19,7 @@ use std::convert::TryInto;
 use crossbeam_channel::{Sender, Receiver, bounded, SendError};
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
+use hyper::header::{Basic, Header, HeaderFormat};
 use hyper::Url;
 use hyper::client::Client;
 use slog::Drain;
@@ -35,7 +38,11 @@ pub const SKIP_NAN_VALUES: bool = true;
 
 pub const DROP_DEADLINE: Duration = Duration::from_secs(120);
 
-pub type Credentials = hyper::header::Authorization<hyper::header::Basic>;
+pub type BasicCredentials = hyper::header::Authorization<Basic>;
+
+// needed to create a separate header type from Authorization, which
+// seems to perform some kind of auto enconding on the header value.
+header! { (TokenAuthorization, "Authorization") => [String] }
 
 /// Created this so I know what types can be passed through the
 /// `measure!` macro, which used to convert with `as i64` and
@@ -329,9 +336,109 @@ pub struct InfluxWriter {
     thread: Option<Arc<thread::JoinHandle<()>>>,
 }
 
+pub struct InfluxWriterBuilder<T> {
+    pub host: String,
+    pub port: u16,
+    pub db: Option<String>,
+    pub creds: Option<T>,
+    pub logger: Option<slog::Logger>,
+    pub is_placeholder: bool,
+}
+
+impl Default for InfluxWriterBuilder<BasicCredentials> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> InfluxWriterBuilder<T>
+    where T: Header + HeaderFormat
+{
+    fn new() -> Self {
+        Self {
+            host: "localhost".to_string(),
+            port: 8086,
+            db: None,
+            creds: None,
+            is_placeholder: false,
+            logger: None,
+        }
+    }
+
+    /// server host addr
+    pub fn host<S: AsRef<str>>(mut self, host: S) -> Self {
+        self.host = host.as_ref().to_string();
+        self
+    }
+
+    /// port to connect to, usually 8086 but for influx cloud it will be 443
+    pub fn port(mut self, port: u16) -> Self {
+        self.port = port;
+        self
+    }
+
+    /// set database (aka "bucket") name
+    pub fn db<S: AsRef<str>>(mut self, db: S) -> Self {
+        self.db = Some(db.as_ref().to_string());
+        self
+    }
+
+    /// optional logger for use by the writer thread
+    pub fn logger<L: std::borrow::Borrow<slog::Logger>>(mut self, root: L) -> Self {
+        self.logger = Some(root.borrow().clone());
+        self
+    }
+
+    /// optional authentication header to append to writes
+    pub fn creds(mut self, auth_header: T) -> Self {
+        self.creds = Some(auth_header);
+        self
+    }
+
+    /// if set (i.e. by calling this method), build will return a noop version
+    /// of an `InfluxWriter` that just drops all writes.
+    pub fn placeholder(mut self) -> Self {
+        self.is_placeholder = true;
+        self
+    }
+
+    /// build an `InfluxWriter`. can fail if db is not set.
+    pub fn build(mut self) -> Result<InfluxWriter, &'static str> {
+        if self.is_placeholder { return Ok(InfluxWriter::placeholder()) }
+
+        if self.db.is_none() { return Err("required field db still unset") }
+        let db = self.db.unwrap();
+
+        let logger = match self.logger.take() {
+            Some(logger) => {
+                logger.new(o!(
+                    "host" => self.host.clone(),
+                    "port" => self.port.clone(),
+                    "db" => db.clone(),
+                    "creds?" => self.creds.is_some(),
+                ))
+            }
+
+            None => slog::Logger::root(slog::Discard.fuse(), o!()),
+        };
+
+        Ok(InfluxWriter::new(&self.host, self.port, &db, self.creds, logger))
+    }
+}
+
+impl InfluxWriterBuilder<TokenAuthorization> {
+    /// retrieve env var and use its value as auth token
+    pub fn token_auth_from_env_var(self, env_var_name: &str) -> Result<Self, std::env::VarError> {
+        let token = std::env::var(env_var_name)?;
+        let creds = InfluxWriter::get_token_credentials(token);
+        Ok(self.creds(creds))
+    }
+}
+
 impl Default for InfluxWriter {
     fn default() -> Self {
-        InfluxWriter::new("localhost", "test")
+        let noop_logger = slog::Logger::root(slog::Discard.fuse(), o!());
+        InfluxWriter::new::<BasicCredentials>("localhost", 8086, "test", None, noop_logger)
     }
 }
 
@@ -408,20 +515,31 @@ impl InfluxWriter {
         self.thread.is_none() && self.host == ""
     }
 
-    pub fn new(host: &str, db: &str) -> Self {
-        let noop_logger = slog::Logger::root(slog::Discard.fuse(), o!());
-        Self::with_logger_and_opt_creds(host, db, None, &noop_logger)
-    }
-
-    pub fn get_credentials(username: String, password: Option<String>) -> Credentials {
+    pub fn get_basic_credentials(username: String, password: Option<String>) -> BasicCredentials {
         hyper::header::Authorization(
             hyper::header::Basic { username, password }
         )
     }
 
-    fn http_req<'a>(client: &'a Client, url: Url, body: &'a str, creds: &Option<Credentials>) -> hyper::client::RequestBuilder<'a> {
+    pub fn get_token_credentials(token: String) -> TokenAuthorization {
+        let token = if ! token.starts_with("Token") {
+            format!("Token {}", token)
+        } else {
+            token
+        };
+        TokenAuthorization(token)
+    }
+
+    fn http_req<'a, T>(client: &'a Client, url: Url, body: &'a str, creds: &Option<T>) -> hyper::client::RequestBuilder<'a>
+        where T: Header + HeaderFormat
+    {
+        // const TOKEN: &str = "YP3Dx1jJUJCfi7gMtsUc2M-FgLieIe8mHL-A66VFOhzRQ37euVrQsZTWS8GP0jmJ07EqXAhNwROcQXKfRJXRKA==";
+
         let req = client.post(url.clone())
-            .body(body);
+            .body(body)
+            //.header(Authorization(format!("Token {}", TOKEN)))
+            ;
+        //req
         if let Some(auth) = creds {
             req.header(auth.clone())
         } else {
@@ -431,16 +549,39 @@ impl InfluxWriter {
 
     #[allow(unused_assignments)]
     pub fn with_logger(host: &str, db: &str, logger: &Logger) -> Self {
-        Self::with_logger_and_opt_creds(host, db, None, logger)
+        Self::with_logger_and_opt_creds::<BasicCredentials>(host, db, None, logger)
     }
 
-    pub fn with_logger_and_opt_creds(host: &str, db: &str, creds: Option<Credentials>, logger: &Logger) -> Self {
+    pub fn with_logger_and_opt_creds<T>(host: &str, db: &str, creds: Option<T>, logger: &Logger) -> Self
+        where T: Header + HeaderFormat
+    {
         let logger = logger.new(o!(
             "host" => host.to_string(),
             "db" => db.to_string()));
+        Self::new(host, 8086, db, creds, logger)
+    }
+
+    pub fn builder<T: Header + HeaderFormat>() -> InfluxWriterBuilder<T> {
+        InfluxWriterBuilder::new()
+    }
+
+    pub fn new<T>(
+        host: &str,
+        port: u16,
+        db: &str,
+        creds: Option<T>,
+        logger: Logger,
+    ) -> Self
+        where T: Header + HeaderFormat
+    {
+        let host = if host.starts_with("http") {
+            host.to_string()
+        } else {
+            format!("http://{}", host)
+        };
         let (tx, rx): (Sender<Option<OwnedMeasurement>>, Receiver<Option<OwnedMeasurement>>) = bounded(4096);
         let url =
-            Url::parse_with_params(&format!("http://{}:8086/write", host),
+            Url::parse_with_params(&format!("{}:{}/write", host, port),
                                    &[("db", db), ("precision", "ns")])
                 .expect("influx writer url should parse");
         let thread = thread::Builder::new().name(format!("inflx:{}", db)).spawn(move || {
@@ -460,7 +601,18 @@ impl InfluxWriter {
             const N_HTTP_ATTEMPTS: u32 = 16;
             const INITIAL_BACKLOG: usize = MAX_OUTSTANDING_HTTP * 2;
 
-            let client = Arc::new(Client::new());
+            let client = if url.scheme() == "https" {
+                use hyper::net::HttpsConnector;
+                use hyper_native_tls::NativeTlsClient;
+
+                let ssl = NativeTlsClient::new().unwrap();
+                let connector = HttpsConnector::new(ssl);
+                Client::with_connector(connector)
+            } else {
+                Client::new()
+            };
+            let client = Arc::new(client);
+
             let creds = Arc::new(creds);
 
             info!(logger, "initializing InfluxWriter ...";

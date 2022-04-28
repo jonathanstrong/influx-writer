@@ -1,6 +1,6 @@
 [package]
 name = "influx-writer"
-version = "0.19.6"
+version = "0.20.0-rc.1"
 authors = ["Jonathan Strong <jonathan.strong@gmail.com>"]
 edition = "2018"
 description = "opinionated influxdb client"
@@ -16,22 +16,28 @@ path = "src/lib.rs"
 [[example]]
 name = "write"
 path = "examples/write.rs"
-required-features = ["signal-hook"]
+required-features = ["examples"]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-hyper = "0.10"
+hyper = { version = "0.10" }
+hyper-native-tls = "0.3.0"
 slog = "2"
-slog-term = "2"
 uuid = { version = "0.8", features = ["serde", "v4", "slog"] }
-slog-async = "2"
 smallvec = "1.6"
 crossbeam-channel = "0.5"
 pretty_toa = "1.0.0"
 signal-hook = { version = "0.3.8", optional = true }
+slog-async = { version = "2", optional = true }
+slog-term =  { version = "2", optional = true }
 
-decimal = { version = "2.4.3", registry = "mmcxi" }
-decimal-macros = { version = "0.3", registry = "mmcxi" }
+# decimal = { version = "2.4.3", registry = "mmcxi" }
+# decimal-macros = { version = "0.3", registry = "mmcxi" }
+
+decimal = { git = "https://github.com/jonathanstrong/decimal", branch = "v2.5.x" }
+decimal-macros = { git = "https://github.com/jonathanstrong/decimal-macros" }
+
+# [dev-dependencies]
 
 [features]
 default = ["string-tags"]
@@ -49,6 +55,7 @@ unstable = []
 #
 auth-tests = ["http-tests"]
 http-tests = []
+examples = ["signal-hook", "slog-async", "slog-term"]
 
 [profile.bench]
 lto = true

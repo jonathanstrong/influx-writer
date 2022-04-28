@@ -17,7 +17,7 @@ release-build name +args='':
     @just cargo build --bin {{name}} --release {{args}}
 
 example name +args='':
-    @just cargo build --example {{name}} {{args}}
+    @just cargo build --example {{name}} --features examples {{args}}
 
 test +args='':
     @just cargo test {{args}}
@@ -49,4 +49,14 @@ rebuild:
 show-build-env:
     @ env | rg RUST --color never
 
+v2-test-write bucket token:
+    curl -i --verbose --request POST http://localhost:8086/write?db={{bucket}} \
+      --header "Authorization: Token {{token}}" \
+      --data-binary "test_meas,host=host1 field1=2i,field2=2.0 $(date +%s%N)"
 
+
+v2-test-query bucket measurement token:
+    curl --request POST http://localhost:8086/query \
+      --header "Authorization: Token {{token}}" \
+      --data-urlencode "db={{bucket}}" \
+      --data-urlencode "q=select * from {{measurement}} limit 25"
