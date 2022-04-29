@@ -565,6 +565,10 @@ impl InfluxWriter {
         InfluxWriterBuilder::new()
     }
 
+    pub fn default_builder() -> InfluxWriterBuilder<BasicCredentials> {
+        InfluxWriterBuilder::new()
+    }
+
     pub fn new<T>(
         host: &str,
         port: u16,
